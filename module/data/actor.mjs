@@ -35,6 +35,16 @@ function deriveConditionalMods(system) {
 /* -------------------------------------------- */
 
 export class SorcererData extends foundry.abstract.TypeDataModel {
+  /** Repair "Limitless," / "Limitless,Limitless" left by v0.1.2–0.2.0, which had two inputs per field. */
+  static migrateData(source) {
+    for (const key of ["techniqueName", "pathName"]) {
+      if (typeof source[key] === "string" && source[key].includes(",")) {
+        source[key] = source[key].split(",").map(s => s.trim()).find(Boolean) ?? "";
+      }
+    }
+    return super.migrateData(source);
+  }
+
   static defineSchema() {
     const abilities = {};
     for (const key of Object.keys(ABILITIES)) abilities[key] = new SchemaField({ mod: int(0, { min: -5, max: 10 }) });

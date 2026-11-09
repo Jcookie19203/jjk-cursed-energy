@@ -107,6 +107,12 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     super._onFirstRender?.(context, options);
     this.element.addEventListener("dragover", ev => ev.preventDefault());
     this.element.addEventListener("drop", ev => this.#onDropItem(ev), { capture: true });
+    // GM-tab pickers mirror header fields; they carry data-field (not name) so the form never sees two
+    // values for one field — Foundry would join those into "Limitless,".
+    this.element.addEventListener("change", ev => {
+      const field = ev.target.closest?.("select[data-field]")?.dataset.field;
+      if (field && this.isEditable) this.document.update({ [field]: ev.target.value });
+    });
   }
 
   async #onDropItem(event) {

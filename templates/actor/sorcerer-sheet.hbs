@@ -135,8 +135,8 @@
   <section class="jjk-tab track">
     <p class="hint">GM only. Check a card when the player earns it and it's added to their sheet; uncheck to take it away. Requirements are in the technique's GM Master Sheet.</p>
     <div class="jjk-row">
-      <label>Technique / path <select name="system.techniqueName">{{selectOptions tracker.mainOptions selected=system.techniqueName blank="— choose —"}}</select></label>
-      <label>Layer path <select name="system.pathName">{{selectOptions tracker.layerOptions selected=system.pathName blank="— none —"}}</select></label>
+      <label>Technique / path <select data-field="system.techniqueName">{{selectOptions tracker.mainOptions selected=system.techniqueName blank="— choose —"}}</select></label>
+      <label>Layer path <select data-field="system.pathName">{{selectOptions tracker.layerOptions selected=system.pathName blank="— none —"}}</select></label>
     </div>
     {{#each tracker.ladders}}
     {{#if missing}}
