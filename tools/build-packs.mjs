@@ -165,7 +165,8 @@ function parseCurse(file, md) {
   const name = base.replace(/^\d+\s*-\s*/, "").replace(/\s*\([^)]*\)$/, "");
   const level = num(md, /level\s*~?(\d+)/i, 4);
   const field = re => (md.match(re)?.[1] ?? "").replace(/\*\*/g, "").trim().replace(/[;.]$/, "");
-  const melee = md.match(/\*\*(?:Melee|Ranged)\*\*[^\n]*?([A-Za-z][A-Za-z' ,-]*?)\s+\+(\d+)\b[^\n]*?\*\*(\d+d\d+(?:\s*[+-]\s*\d+)?)\s*([a-z]+)?/);
+  // First Strike: "**Melee** `[1]` <name, any characters> +NN (...), **XdY+Z type**".
+  const melee = md.match(/\*\*(?:Melee|Ranged)\*\*\s*(?:`[^`]*`\s*)?([^+\n]+?)\s+\+(\d+)\b[^\n]*?\*\*(\d+d\d+(?:\s*[+-]\s*\d+)?)\s*([a-z]+)?/);
   const items = [];
   const actorId = makeId(`curses:actor:${base}`);
   if (melee) {
@@ -239,10 +240,47 @@ for (const f of mdFiles(path.join(ROOT, "content", "pf2e-core"))) {
   journalDoc("pf2e-core", stripH1(md).title || f, toHTML(md), { sort: s++, seed: f });
 }
 
-// Bestiary.
+// Bestiary, foldered by Grade (110+ entries are unbrowsable as one flat list).
+const GRADE_FOLDER_ORDER = ["Fledgling", "Grade 4", "Grade 3", "Grade 2", "Semi-Grade 1", "Grade 1", "Special Grade"];
+const gradeOfFile = f => {
+  const inner = path.basename(f, ".md").replace(/ \[GM\]$/, "").match(/\(([^)]*)\)$/)?.[1] ?? "";
+  return inner.split(",").map(x => x.trim()).reverse().find(x => GRADE_FOLDER_ORDER.includes(x)) ?? "Grade 4";
+};
+const gradeFolders = (pack, type) => Object.fromEntries(GRADE_FOLDER_ORDER.map((g, i) => [g, folderDoc(pack, g, type, i)]));
 const bestDir = path.join(SUPP, "04 - Curses & Monsters");
-for (const f of mdFiles(path.join(bestDir, "Player Versions"))) journalDoc("curse-field-notes", path.basename(f, ".md").replace(/^\d+\s*-\s*/, ""), toHTML(read(path.join(bestDir, "Player Versions", f))), { seed: f });
-for (const f of mdFiles(path.join(bestDir, "GM Versions"))) emit("curses", parseCurse(f, read(path.join(bestDir, "GM Versions", f))));
+const notesFolders = gradeFolders("curse-field-notes", "JournalEntry");
+const curseFolders = gradeFolders("curses", "Actor");
+for (const f of mdFiles(path.join(bestDir, "Player Versions"))) {
+  journalDoc("curse-field-notes", path.basename(f, ".md").replace(/^\d+\s*-\s*/, ""), toHTML(read(path.join(bestDir, "Player Versions", f))), { seed: f, folder: notesFolders[gradeOfFile(f)] });
+}
+for (const f of mdFiles(path.join(bestDir, "GM Versions"))) {
+  const actor = parseCurse(f, read(path.join(bestDir, "GM Versions", f)));
+  actor.folder = curseFolders[gradeOfFile(f)];
+  emit("curses", actor);
+}
+
+// Cursed tools (GM-only): one markdown file per tool → a weapon item (or a gear item for Objects).
+const toolDir = path.join(SUPP, "07 - Cursed Tools");
+const toolFolders = gradeFolders("cursed-tools", "Item");
+const toolProblems = [];
+for (const f of mdFiles(toolDir)) {
+  const md = read(path.join(toolDir, f));
+  const { title, body } = stripH1(md);
+  const grade = gradeOfFile(f);
+  const weapon = md.match(/^\*\*Weapon:\*\*\s*(d4|d6|d8|d10|d12)\s+([A-Za-z-]+)\s*·\s*([^·\n]+?)\s*·\s*([^\n]*)$/m);
+  const object = md.match(/^\*\*Object:\*\*\s*([^\n]+)$/m);
+  const description = toHTML(body);
+  const name = cleanTitle(title) || path.basename(f, ".md").replace(/^\d+\s*-\s*/, "").replace(/\s*\([^)]*\)$/, "");
+  if (weapon) {
+    const traits = weapon[4].replace(/\.$/, "").trim();
+    itemDoc("cursed-tools", { name, type: "weapon", img: "icons/svg/lightning.svg", folder: toolFolders[grade], seed: f,
+      system: { attackOverride: null, formula: "", charge: 0, bonus: 0, equipped: false, quantity: 1, bulk: "1", price: "", dieSize: weapon[1], damageType: weapon[2].toLowerCase(), range: weapon[3].trim(), traits: /cursed tool/i.test(traits) ? traits : `${traits}, cursed tool`, cursedTool: true, description } });
+  } else if (object) {
+    itemDoc("cursed-tools", { name, type: "gear", img: "icons/svg/chest.svg", folder: toolFolders[grade], seed: f,
+      system: { quantity: 1, traits: "cursed object", bulk: "L", price: "", description } });
+  } else toolProblems.push(f);
+}
+if (toolProblems.length) console.warn(`Cursed tools with no **Weapon:**/**Object:** line (skipped): ${toolProblems.join(", ")}`);
 
 // Core items.
 for (const a of CORE.ANCESTRIES) itemDoc("ancestries", { name: a.name, type: "ancestry", img: "icons/svg/mystery-man.svg", system: a });
