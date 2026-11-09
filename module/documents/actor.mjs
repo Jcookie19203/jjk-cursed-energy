@@ -21,6 +21,25 @@ export class JJKActor extends Actor {
     else this.updateSource({ "prototypeToken.disposition": -1 });
   }
 
+  /* ---------- keep derived stats fresh when items change ---------- */
+  // On v14 a create/update/delete of an embedded item doesn't re-run the actor's derived data, so the
+  // tier counter, Cursed Attack/DC band, AC and the Promote button would go stale. Recompute first.
+
+  _onCreateDescendantDocuments(...args) {
+    this.prepareData();
+    super._onCreateDescendantDocuments(...args);
+  }
+
+  _onUpdateDescendantDocuments(...args) {
+    this.prepareData();
+    super._onUpdateDescendantDocuments(...args);
+  }
+
+  _onDeleteDescendantDocuments(...args) {
+    this.prepareData();
+    super._onDeleteDescendantDocuments(...args);
+  }
+
   /* ---------- modifiers ---------- */
 
   getSaveMod(key) {
