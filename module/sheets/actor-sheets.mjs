@@ -5,6 +5,32 @@ const { ActorSheetV2 } = foundry.applications.sheets;
 const TextEditorImpl = () => foundry.applications.ux.TextEditor.implementation;
 const signed = n => (n >= 0 ? `+${n}` : `${n}`);
 
+const CARD_PACKS = [`${SYSTEM_ID}.techniques`, `${SYSTEM_ID}.cursed-paths`];
+const MASTER_PACK = `${SYSTEM_ID}.gm-master-sheets`;
+
+/** The actor's copy of a compendium card: matched by source uuid, else by name + technique. */
+function findOwnedCard(actor, uuid, name, technique) {
+  return actor.items.find(i => i.type === "ability" && i.flags?.[SYSTEM_ID]?.sourceId === uuid)
+    ?? actor.items.find(i => i.type === "ability" && !i.flags?.[SYSTEM_ID]?.sourceId && i.name === name && i.system.technique === technique);
+}
+
+/** Every technique / path ladder in the card compendiums: { name: { pack, ladder, entries[] } }. */
+async function loadLadders() {
+  const ladders = {};
+  for (const id of CARD_PACKS) {
+    const pack = game.packs.get(id);
+    if (!pack) continue;
+    const index = await pack.getIndex({ fields: ["system.technique", "system.tier", "system.slot", "system.ladder"] });
+    for (const e of index) {
+      const name = e.system?.technique;
+      if (!name) continue;
+      ladders[name] ??= { pack: id, ladder: e.system.ladder ?? "technique", entries: [] };
+      ladders[name].entries.push(e);
+    }
+  }
+  return ladders;
+}
+
 /** Shared behaviour for both actor sheets. */
 class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   static DEFAULT_OPTIONS = {
@@ -34,9 +60,40 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       pressure: JJKBaseActorSheet.#pressure,
       takeover: JJKBaseActorSheet.#takeover,
       // Not named "tab": ApplicationV2 reserves that action for its own tab system and never calls ours.
-      jjkTab: JJKBaseActorSheet.#tab
+      jjkTab: JJKBaseActorSheet.#tab,
+      cardToggle: JJKBaseActorSheet.#cardToggle,
+      trackCard: JJKBaseActorSheet.#trackCard,
+      openCompendiumDoc: JJKBaseActorSheet.#openCompendiumDoc
     }
   };
+
+  /** Card ids whose rules text is expanded on the Technique tab (kept across re-renders). */
+  _expandedCards = new Set();
+
+  static #cardToggle(event, target) {
+    const id = target.closest("[data-item-id]").dataset.itemId;
+    if (this._expandedCards.has(id)) this._expandedCards.delete(id);
+    else this._expandedCards.add(id);
+    this.render();
+  }
+
+  /** GM tracker: check a card to grant it from the compendium, uncheck to take it away. */
+  static async #trackCard(event, target) {
+    if (!game.user.isGM) return;
+    const { uuid } = target.dataset;
+    const owned = findOwnedCard(this.document, uuid, target.dataset.name, target.dataset.technique);
+    if (owned) return owned.delete();
+    const doc = await fromUuid(uuid);
+    if (!doc) return ui.notifications.error("That card is missing from the compendium.");
+    const data = doc.toObject();
+    foundry.utils.setProperty(data, `flags.${SYSTEM_ID}.sourceId`, uuid);
+    await this.document.createEmbeddedDocuments("Item", [data]);
+  }
+
+  static async #openCompendiumDoc(event, target) {
+    const doc = await fromUuid(target.dataset.uuid);
+    doc?.sheet.render(true);
+  }
 
   static #tab(event, target) {
     this.tabGroups[target.dataset.group ?? "primary"] = target.dataset.tab;
@@ -60,7 +117,10 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     if (!this.isEditable) return;
     const item = await Item.implementation.fromDropData(data);
     if (!item || item.parent === this.document) return;
-    await this.document.createEmbeddedDocuments("Item", [item.toObject()]);
+    const itemData = item.toObject();
+    // Remember which compendium card this came from, so the GM tracker shows it as checked.
+    if (item.pack) foundry.utils.setProperty(itemData, `flags.${SYSTEM_ID}.sourceId`, item.uuid);
+    await this.document.createEmbeddedDocuments("Item", [itemData]);
   }
 
   async _prepareContext(options) {
@@ -86,9 +146,15 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       cards: abilities.filter(i => i.system.tier === key).sort((a, b) => a.system.slot - b.system.slot).map(i => ({
         id: i.id, name: i.name, img: i.img, slot: i.system.slot, glyph: ACTION_GLYPH[i.system.actions] ?? "",
         cost: i.system.costText || (i.system.ce !== null ? `${i.system.ce} CE` : ""), universal: i.system.universal,
-        layer: i.system.ladder === "layer", technique: i.system.technique
+        layer: i.system.ladder === "layer", technique: i.system.technique,
+        expanded: this._expandedCards.has(i.id), item: i
       }))
     })).filter(t => t.cards.length);
+    // Only expanded cards need their rules text enriched.
+    for (const tier of byTier) for (const c of tier.cards) {
+      if (c.expanded) c.description = await TextEditorImpl().enrichHTML(c.item.system.description ?? "", { relativeTo: c.item, secrets: c.item.isOwner });
+      delete c.item;
+    }
     context.abilityTiers = byTier;
     context.weapons = items.filter(i => i.type === "weapon");
     context.armor = items.filter(i => i.type === "armor");
@@ -160,7 +226,43 @@ export class JJKSorcererSheet extends JJKBaseActorSheet {
     context.bandRange = `${sys.gradeData.attack[0]}–${sys.gradeData.attack[1]}`;
     context.pressurePct = sys.attributes.pressure * 10;
     context.enrichedNotes = await TextEditorImpl().enrichHTML(sys.details.notes, { relativeTo: this.document, secrets: this.document.isOwner });
+    context.isGM = game.user.isGM;
+    if (!context.isGM && context.tab === "track") context.tab = this.tabGroups.primary = "main";
+    if (context.isGM && context.tab === "track") context.tracker = await this.#prepareTracker();
     return context;
+  }
+
+  /** GM card tracker: every card on the chosen technique ladder and layer path, with owned ones checked. */
+  async #prepareTracker() {
+    const sys = this.document.system;
+    const ladders = await loadLadders();
+    const names = Object.keys(ladders).sort((a, b) => a.localeCompare(b));
+    const main = names.filter(n => ladders[n].ladder !== "layer");
+    const layers = names.filter(n => ladders[n].ladder === "layer");
+    const masters = game.packs.get(MASTER_PACK);
+    const masterIndex = masters ? await masters.getIndex() : [];
+
+    const build = (name, label) => {
+      const lad = ladders[name];
+      if (!lad) return name ? { label, name, missing: true } : null;
+      const master = masterIndex.find?.(e => e.name.startsWith(`${name} —`) || e.name.startsWith(`${name} -`));
+      const tiers = GRADE_ORDER.map(key => ({
+        key, label: GRADES[key].label, current: key === sys.grade,
+        cards: lad.entries.filter(e => e.system.tier === key).sort((a, b) => a.system.slot - b.system.slot).map(e => ({
+          uuid: e.uuid ?? `Compendium.${lad.pack}.Item.${e._id}`, name: e.name, slot: e.system.slot, technique: name,
+          owned: !!findOwnedCard(this.document, e.uuid ?? `Compendium.${lad.pack}.Item.${e._id}`, e.name, name)
+        }))
+      })).filter(t => t.cards.length);
+      const total = tiers.reduce((n, t) => n + t.cards.length, 0);
+      const owned = tiers.reduce((n, t) => n + t.cards.filter(c => c.owned).length, 0);
+      return { label, name, tiers, owned, total, masterUuid: master ? (master.uuid ?? `Compendium.${MASTER_PACK}.JournalEntry.${master._id}`) : null };
+    };
+
+    return {
+      mainOptions: Object.fromEntries(main.map(n => [n, n])),
+      layerOptions: Object.fromEntries(layers.map(n => [n, n])),
+      ladders: [build(sys.techniqueName, "Technique / path"), build(sys.pathName, "Layer path")].filter(Boolean)
+    };
   }
 }
 

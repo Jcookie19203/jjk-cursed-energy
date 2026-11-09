@@ -42,6 +42,7 @@
     <a class="{{#if (jjk-eq tab 'cards')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="cards">Technique</a>
     <a class="{{#if (jjk-eq tab 'gear')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="gear">Gear &amp; Vows</a>
     <a class="{{#if (jjk-eq tab 'notes')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="notes">Details</a>
+    {{#if isGM}}<a class="gm-tab {{#if (jjk-eq tab 'track')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="track" title="Only GMs see this tab">Cards (GM)</a>{{/if}}
   </nav>
 
   {{#if (jjk-eq tab "main")}}
@@ -109,16 +110,17 @@
 
   {{#if (jjk-eq tab "cards")}}
   <section class="jjk-tab cards">
-    <p class="hint">Drag cards here as the GM hands them out. Cards in your current Grade tier raise Cursed Attack and Technique DC by +1 each; three tier cards means you're ready to promote. Layer-path cards don't count toward promotion.</p>
+    <p class="hint">Click a card's name to read it here, or 💬 to use it in chat. Cards in your current Grade tier raise Cursed Attack and Technique DC by +1 each; three tier cards means you're ready to promote. Layer-path cards don't count toward promotion.</p>
     {{#each abilityTiers}}
     <h4>{{label}}</h4>
     <ol class="jjk-items">
       {{#each cards}}
-      <li class="jjk-item" data-item-id="{{id}}">
-        <img src="{{img}}" alt=""><a class="name" data-action="itemUse">{{name}}</a>
+      <li class="jjk-item {{#if expanded}}expanded{{/if}}" data-item-id="{{id}}">
+        <img src="{{img}}" alt=""><a class="name" data-action="cardToggle" title="Read this card">{{#if expanded}}▾{{else}}▸{{/if}} {{name}}</a>
         <span class="tags">{{#if universal}}<em>universal</em>{{/if}}{{#if layer}}<em>path</em>{{/if}}</span>
         <span class="glyph">{{glyph}}</span><span class="cost">{{cost}}</span>
-        <a data-action="itemEdit" title="Edit">✎</a><a data-action="itemDelete" title="Delete">✕</a>
+        <a data-action="itemUse" title="Use in chat">💬</a><a data-action="itemEdit" title="Edit">✎</a><a data-action="itemDelete" title="Delete">✕</a>
+        {{#if expanded}}<div class="jjk-card-text">{{{description}}}</div>{{/if}}
       </li>
       {{/each}}
     </ol>
@@ -126,6 +128,38 @@
     <p class="empty">No cards yet. Your GM gives you your technique's Player Primer and its starting card.</p>
     {{/each}}
     <a class="jjk-add" data-action="itemCreate" data-type="ability">+ Add a blank card</a>
+  </section>
+  {{/if}}
+
+  {{#if (jjk-eq tab "track")}}
+  <section class="jjk-tab track">
+    <p class="hint">GM only. Check a card when the player earns it and it's added to their sheet; uncheck to take it away. Requirements are in the technique's GM Master Sheet.</p>
+    <div class="jjk-row">
+      <label>Technique / path <select name="system.techniqueName">{{selectOptions tracker.mainOptions selected=system.techniqueName blank="— choose —"}}</select></label>
+      <label>Layer path <select name="system.pathName">{{selectOptions tracker.layerOptions selected=system.pathName blank="— none —"}}</select></label>
+    </div>
+    {{#each tracker.ladders}}
+    {{#if missing}}
+    <p class="empty">No compendium ladder is named “{{name}}”. Pick one from the list above.</p>
+    {{else}}
+    <h4>{{name}} <small>{{owned}}/{{total}} earned{{#if masterUuid}} · <a data-action="openCompendiumDoc" data-uuid="{{masterUuid}}">GM Master Sheet</a>{{/if}}</small></h4>
+    <div class="jjk-tracker">
+      {{#each tiers}}
+      <div class="tier {{#if current}}current{{/if}}">
+        <div class="tier-label">{{label}}{{#if current}} <em>current</em>{{/if}}</div>
+        {{#each cards}}
+        <div class="track-card {{#if owned}}owned{{/if}}">
+          <a class="box" data-action="trackCard" data-uuid="{{uuid}}" data-name="{{name}}" data-technique="{{technique}}" title="{{#if owned}}Remove from sheet{{else}}Grant this card{{/if}}">{{#if owned}}☑{{else}}☐{{/if}}</a>
+          <a class="name" data-action="openCompendiumDoc" data-uuid="{{uuid}}" title="Open card">{{slot}}. {{name}}</a>
+        </div>
+        {{/each}}
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+    {{else}}
+    <p class="empty">Choose this sorcerer's technique or path above.</p>
+    {{/each}}
   </section>
   {{/if}}
 

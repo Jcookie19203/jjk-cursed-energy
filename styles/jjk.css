@@ -90,6 +90,21 @@
 .jjk .jjk-grid label { display: flex; flex-direction: column; font-size: 0.8em; }
 .jjk .jjk-grid label.wide { grid-column: span 2; }
 .jjk .jjk-grid label.jjk-check { flex-direction: row; align-items: center; gap: 4px; }
+/* Expandable cards (Technique tab) */
+.jjk .jjk-item.expanded { flex-wrap: wrap; background: rgba(91, 42, 134, 0.05); }
+.jjk .jjk-card-text { flex-basis: 100%; padding: 4px 8px 8px 30px; font-size: 0.9em; line-height: 1.4; }
+.jjk .jjk-card-text p { margin: 0.3em 0; }
+/* GM card tracker */
+.jjk .jjk-tabs a.gm-tab { margin-left: auto; color: var(--jjk-danger); }
+.jjk .jjk-tabs a.gm-tab.active { background: var(--jjk-danger); color: #fff; }
+.jjk .jjk-tracker { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.jjk .jjk-tracker .tier { border: 1px solid var(--jjk-line); border-radius: 4px; padding: 4px 6px; background: #fff; }
+.jjk .jjk-tracker .tier.current { border-color: var(--jjk-accent); box-shadow: 0 0 0 1px var(--jjk-accent); }
+.jjk .jjk-tracker .tier-label { font-weight: bold; color: var(--jjk-accent); font-size: 0.85em; margin-bottom: 2px; }
+.jjk .jjk-tracker .tier-label em { font-weight: normal; font-size: 0.85em; color: var(--jjk-danger); }
+.jjk .jjk-tracker .track-card { display: flex; gap: 6px; align-items: baseline; font-size: 0.9em; }
+.jjk .jjk-tracker .track-card .box { font-size: 1.15em; line-height: 1; }
+.jjk .jjk-tracker .track-card.owned .name { font-weight: bold; }
 .jjk prose-mirror { min-height: 220px; background: #fff; border: 1px solid var(--jjk-line); border-radius: 4px; display: block; }
 
 /* chat */
