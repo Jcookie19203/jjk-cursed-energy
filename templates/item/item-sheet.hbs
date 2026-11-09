@@ -1,0 +1,110 @@
+<div class="jjk-sheet-body">
+  <header class="jjk-header small">
+    <img class="profile" src="{{item.img}}" data-edit="img" alt="{{item.name}}" data-action="editImage">
+    <div class="jjk-header-main">
+      <input class="jjk-name" type="text" name="name" value="{{item.name}}">
+      <div class="jjk-sub">{{typeLabel}} {{#if item.actor}}· on {{item.actor.name}} · <a data-action="use">post to chat</a>{{/if}}</div>
+    </div>
+  </header>
+
+  <div class="jjk-item-body">
+    {{#if isType.ability}}
+    <div class="jjk-grid">
+      <label>Technique / path <input type="text" name="system.technique" value="{{system.technique}}"></label>
+      <label>Tier <select name="system.tier">{{selectOptions gradeOptions selected=system.tier}}</select></label>
+      <label>Card # <input type="number" name="system.slot" value="{{system.slot}}" min="1" max="3"></label>
+      <label>Ladder <select name="system.ladder">{{selectOptions ladderOptions selected=system.ladder}}</select></label>
+      <label class="jjk-check"><input type="checkbox" name="system.universal" {{checked system.universal}}> Universal milestone</label>
+      <label class="jjk-check"><input type="checkbox" name="system.granted" {{checked system.granted}}> Granted at start</label>
+      <label>Cost text <input type="text" name="system.costText" value="{{system.costText}}"></label>
+      <label>CE cost (number) <input type="number" name="system.ce" value="{{system.ce}}"></label>
+      <label class="jjk-check"><input type="checkbox" name="system.allPool" {{checked system.allPool}}> Costs whole CE pool</label>
+      <label>Actions <select name="system.actions">{{selectOptions actionOptions selected=system.actions}}</select></label>
+      <label class="wide">Traits <input type="text" name="system.traits" value="{{system.traits}}" placeholder="cursed, space"></label>
+      <label class="wide">Range / area <input type="text" name="system.range" value="{{system.range}}"></label>
+      <label>Resolution <select name="system.resolution">{{selectOptions resolutionOptions selected=system.resolution}}</select></label>
+      <label>Save <select name="system.save">{{selectOptions saveOptions selected=system.save}}</select></label>
+      <label class="jjk-check"><input type="checkbox" name="system.basicSave" {{checked system.basicSave}}> Basic save</label>
+      <label class="jjk-check"><input type="checkbox" name="system.usesOutput" {{checked system.usesOutput}}> Deals output damage</label>
+      <label class="jjk-check"><input type="checkbox" name="system.isDomain" {{checked system.isDomain}}> Domain Expansion</label>
+      <label>Pressure <input type="number" name="system.pressure" value="{{system.pressure}}" min="0" max="10"></label>
+    </div>
+    {{/if}}
+
+    {{#if isType.weapon}}
+    <div class="jjk-grid">
+      <label>Die size <select name="system.dieSize">{{selectOptions dieOptions selected=system.dieSize}}</select></label>
+      <label>Damage type <input type="text" name="system.damageType" value="{{system.damageType}}"></label>
+      <label>Range <input type="text" name="system.range" value="{{system.range}}"></label>
+      <label>Attack bonus <input type="number" name="system.bonus" value="{{system.bonus}}"></label>
+      <label>Fixed attack (NPC) <input type="number" name="system.attackOverride" value="{{system.attackOverride}}" placeholder="—"></label>
+      <label>Fixed damage (NPC) <input type="text" name="system.formula" value="{{system.formula}}" placeholder="2d8+6"></label>
+      <label class="wide">Traits <input type="text" name="system.traits" value="{{system.traits}}"></label>
+      <label class="jjk-check"><input type="checkbox" name="system.cursedTool" {{checked system.cursedTool}}> Cursed tool</label>
+      <label>Stored charge <input type="number" name="system.charge" value="{{system.charge}}" min="0"></label>
+      <label>Bulk <input type="text" name="system.bulk" value="{{system.bulk}}"></label>
+      <label>Price <input type="text" name="system.price" value="{{system.price}}"></label>
+    </div>
+    {{/if}}
+
+    {{#if isType.armor}}
+    <div class="jjk-grid">
+      <label>Category <select name="system.category">{{selectOptions armorOptions selected=system.category}}</select></label>
+      <label>AC bonus <input type="number" name="system.acBonus" value="{{system.acBonus}}"></label>
+      <label>Dex cap <input type="number" name="system.dexCap" value="{{system.dexCap}}"></label>
+      <label>Check penalty <input type="number" name="system.checkPenalty" value="{{system.checkPenalty}}"></label>
+      <label>Speed penalty <input type="number" name="system.speedPenalty" value="{{system.speedPenalty}}"></label>
+      <label>Strength <input type="number" name="system.strength" value="{{system.strength}}"></label>
+      <label class="jjk-check"><input type="checkbox" name="system.equipped" {{checked system.equipped}}> Worn</label>
+      <label class="wide">Traits <input type="text" name="system.traits" value="{{system.traits}}"></label>
+      <label>Bulk <input type="text" name="system.bulk" value="{{system.bulk}}"></label>
+      <label>Price <input type="text" name="system.price" value="{{system.price}}"></label>
+    </div>
+    {{/if}}
+
+    {{#if isType.gear}}
+    <div class="jjk-grid">
+      <label>Quantity <input type="number" name="system.quantity" value="{{system.quantity}}"></label>
+      <label>Bulk <input type="text" name="system.bulk" value="{{system.bulk}}"></label>
+      <label>Price <input type="text" name="system.price" value="{{system.price}}"></label>
+      <label class="wide">Traits <input type="text" name="system.traits" value="{{system.traits}}"></label>
+    </div>
+    {{/if}}
+
+    {{#if isType.vow}}
+    <div class="jjk-grid">
+      <label>Kind <select name="system.kind">{{selectOptions vowKindOptions selected=system.kind}}</select></label>
+      <label>Weight <select name="system.weight">{{selectOptions vowWeightOptions selected=system.weight}}</select></label>
+      <label class="wide">Restriction <input type="text" name="system.restriction" value="{{system.restriction}}"></label>
+      <label class="wide">Benefit <input type="text" name="system.benefit" value="{{system.benefit}}"></label>
+      <label class="wide">Other party (mutual) <input type="text" name="system.party" value="{{system.party}}"></label>
+      <label class="jjk-check"><input type="checkbox" name="system.broken" {{checked system.broken}}> Broken</label>
+    </div>
+    {{/if}}
+
+    {{#if isType.ancestry}}
+    <div class="jjk-grid">
+      <label>Hit Points <input type="number" name="system.hp" value="{{system.hp}}"></label>
+      <label>Size <select name="system.size">{{selectOptions sizeOptions selected=system.size}}</select></label>
+      <label>Speed <input type="number" name="system.speed" value="{{system.speed}}"></label>
+      <label class="wide">Attribute boosts <input type="text" name="system.boosts" value="{{system.boosts}}"></label>
+      <label class="wide">Attribute flaw <input type="text" name="system.flaw" value="{{system.flaw}}"></label>
+      <label class="wide">Languages <input type="text" name="system.languages" value="{{system.languages}}"></label>
+      <label class="wide">Senses <input type="text" name="system.senses" value="{{system.senses}}"></label>
+      <label class="wide">Traits <input type="text" name="system.traits" value="{{system.traits}}"></label>
+    </div>
+    {{/if}}
+
+    {{#if isType.background}}
+    <div class="jjk-grid">
+      <label class="wide">Attribute boosts <input type="text" name="system.boosts" value="{{system.boosts}}"></label>
+      <label>Trained skill <input type="text" name="system.trainedSkill" value="{{system.trainedSkill}}"></label>
+      <label>Lore <input type="text" name="system.lore" value="{{system.lore}}"></label>
+      <label class="wide">Skill feat <input type="text" name="system.feat" value="{{system.feat}}"></label>
+    </div>
+    {{/if}}
+
+    <h4>Description</h4>
+    <prose-mirror name="system.description" value="{{source.description}}" toggled>{{{enrichedDescription}}}</prose-mirror>
+  </div>
+</div>

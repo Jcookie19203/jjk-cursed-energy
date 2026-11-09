@@ -1,0 +1,16 @@
+{
+  "name": "jjk-cursed-energy",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "description": "Build tooling for the Jujutsu Kaisen: Cursed Energy Foundry VTT system.",
+  "scripts": {
+    "build:packs": "node tools/build-packs.mjs",
+    "check": "node tools/check.mjs",
+    "zip": "node tools/zip.mjs"
+  },
+  "devDependencies": {
+    "@foundryvtt/foundryvtt-cli": "^1.0.3",
+    "marked": "^12.0.2"
+  }
+}

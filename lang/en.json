@@ -1,0 +1,11 @@
+{
+  "TYPES.Actor.sorcerer": "Sorcerer",
+  "TYPES.Actor.curse": "Curse / NPC",
+  "TYPES.Item.ability": "Ability Card",
+  "TYPES.Item.weapon": "Weapon / Cursed Tool",
+  "TYPES.Item.armor": "Armor",
+  "TYPES.Item.gear": "Gear",
+  "TYPES.Item.vow": "Binding Vow",
+  "TYPES.Item.ancestry": "Ancestry",
+  "TYPES.Item.background": "Background"
+}

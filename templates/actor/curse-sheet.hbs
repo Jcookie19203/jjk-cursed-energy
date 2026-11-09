@@ -1,0 +1,99 @@
+<div class="jjk-sheet-body">
+  <header class="jjk-header">
+    <img class="profile" src="{{actor.img}}" data-edit="img" alt="{{actor.name}}" data-action="editImage">
+    <div class="jjk-header-main">
+      <input class="jjk-name" type="text" name="name" value="{{actor.name}}" placeholder="Name">
+      <div class="jjk-row">
+        <label>Grade <select name="system.grade">{{selectOptions gradeOptions selected=system.grade}}</select></label>
+        <label>PF2e level <input type="number" name="system.level" value="{{system.level}}"></label>
+        <label class="wide">Role <input type="text" name="system.role" value="{{system.role}}" placeholder="e.g. ambusher"></label>
+      </div>
+    </div>
+  </header>
+
+  <div class="jjk-resources">
+    <div class="res hp"><span class="lbl">HP</span>
+      <input type="number" name="system.attributes.hp.value" value="{{system.attributes.hp.value}}"> /
+      <input type="number" name="system.attributes.hp.max" value="{{system.attributes.hp.max}}"></div>
+    <div class="res ce"><span class="lbl">CE</span>
+      <input type="number" name="system.attributes.ce.value" value="{{system.attributes.ce.value}}"> /
+      <input type="number" name="system.attributes.ce.max" value="{{system.attributes.ce.max}}"> <a data-action="reset" title="Refill CE">⟳</a></div>
+    <div class="res"><span class="lbl">AC</span><input type="number" name="system.attributes.ac.base" value="{{system.attributes.ac.base}}"> <small>→ {{system.attributes.ac.value}}</small></div>
+    <div class="res"><span class="lbl">Reinforcement</span><input type="number" name="system.attributes.reinforcement" value="{{system.attributes.reinforcement}}"></div>
+    <div class="res"><span class="lbl">Cursed Attack</span><input type="number" name="system.cursedAttack.base" value="{{system.cursedAttack.base}}"> <a data-action="rollAttack">{{cursedAttack}}</a></div>
+    <div class="res"><span class="lbl">Technique DC</span><input type="number" name="system.techniqueDC.base" value="{{system.techniqueDC.base}}"></div>
+    <div class="res"><span class="lbl">Key mod</span><input type="number" name="system.keyMod" value="{{system.keyMod}}"> <a data-action="rollOutput" title="Output damage ({{system.techniqueDie}})">{{system.techniqueDie}}</a></div>
+  </div>
+
+  <nav class="jjk-tabs">
+    <a class="{{#if (jjk-eq tab 'main')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="main">Stat Block</a>
+    <a class="{{#if (jjk-eq tab 'cards')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="cards">Abilities</a>
+    <a class="{{#if (jjk-eq tab 'notes')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="notes">GM Notes</a>
+  </nav>
+
+  {{#if (jjk-eq tab "main")}}
+  <section class="jjk-tab main">
+    <div class="jjk-cols">
+      <div class="col">
+        <h4>Defenses</h4>
+        <ul class="jjk-list">
+          {{#each saves}}<li><a data-action="rollSave" data-key="{{key}}">{{label}}</a><input type="number" name="system.saves.{{key}}" value="{{base}}"><span class="mod">{{mod}}</span></li>{{/each}}
+          <li><a data-action="rollPerception">Perception</a><input type="number" name="system.attributes.perception.base" value="{{system.attributes.perception.base}}"><span class="mod">{{perception}}</span></li>
+          <li><span>Speed</span><input type="text" name="system.attributes.speed" value="{{system.attributes.speed}}"></li>
+          <li><span>Domain</span>{{#if system.attributes.domainActive}}<strong class="danger">ACTIVE</strong> <a data-action="endDomain">End</a>{{else}}<a data-action="openDomain">Open Domain</a>{{/if}}</li>
+        </ul>
+        <h4>IWR &amp; Languages</h4>
+        <div class="jjk-stack">
+          <label>Immunities <input type="text" name="system.immunities" value="{{system.immunities}}"></label>
+          <label>Weaknesses <input type="text" name="system.weaknesses" value="{{system.weaknesses}}"></label>
+          <label>Resistances <input type="text" name="system.resistances" value="{{system.resistances}}"></label>
+          <label>Languages <input type="text" name="system.languages" value="{{system.languages}}"></label>
+        </div>
+      </div>
+      <div class="col">
+        <h4>Strikes <a class="jjk-add" data-action="itemCreate" data-type="weapon">+</a></h4>
+        <ol class="jjk-items">
+          {{#each weapons}}
+          <li class="jjk-item" data-item-id="{{id}}"><img src="{{img}}" alt=""><a class="name" data-action="itemUse">{{name}}</a>
+            <span class="cost">{{#if system.formula}}{{system.formula}}{{else}}{{system.dieSize}}{{/if}} {{system.damageType}}</span>
+            <a data-action="itemEdit">✎</a><a data-action="itemDelete">✕</a></li>
+          {{/each}}
+        </ol>
+        <h4>Conditions</h4>
+        <ul class="jjk-list conds">
+          {{#each conditions.valued}}
+          <li class="{{#if value}}on{{/if}}"><span>{{label}}</span>
+            <a data-action="condStep" data-key="{{key}}" data-delta="-1">−</a><strong>{{value}}</strong><a data-action="condStep" data-key="{{key}}" data-delta="1">+</a></li>
+          {{/each}}
+        </ul>
+        <div class="jjk-toggles">
+          {{#each conditions.toggles}}
+          <label class="{{#if value}}on{{/if}}"><input type="checkbox" name="{{name}}" {{checked value}}> {{label}}</label>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if (jjk-eq tab "cards")}}
+  <section class="jjk-tab cards">
+    {{#each abilityTiers}}
+    <h4>{{label}}</h4>
+    <ol class="jjk-items">
+      {{#each cards}}
+      <li class="jjk-item" data-item-id="{{id}}"><img src="{{img}}" alt=""><a class="name" data-action="itemUse">{{name}}</a>
+        <span class="glyph">{{glyph}}</span><span class="cost">{{cost}}</span><a data-action="itemEdit">✎</a><a data-action="itemDelete">✕</a></li>
+      {{/each}}
+    </ol>
+    {{/each}}
+    <a class="jjk-add" data-action="itemCreate" data-type="ability">+ Add an ability</a>
+  </section>
+  {{/if}}
+
+  {{#if (jjk-eq tab "notes")}}
+  <section class="jjk-tab notes">
+    <prose-mirror name="system.description" value="{{source.description}}" toggled>{{{enrichedDescription}}}</prose-mirror>
+  </section>
+  {{/if}}
+</div>

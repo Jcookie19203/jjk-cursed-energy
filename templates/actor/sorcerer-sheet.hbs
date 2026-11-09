@@ -1,0 +1,189 @@
+<div class="jjk-sheet-body">
+  <header class="jjk-header">
+    <img class="profile" src="{{actor.img}}" data-edit="img" alt="{{actor.name}}" data-action="editImage">
+    <div class="jjk-header-main">
+      <input class="jjk-name" type="text" name="name" value="{{actor.name}}" placeholder="Name">
+      <div class="jjk-row">
+        <label>Grade <select name="system.grade">{{selectOptions gradeOptions selected=system.grade}}</select></label>
+        <label>Key <select name="system.keyAbility">{{selectOptions abilityOptions selected=system.keyAbility}}</select></label>
+        <label>Best save <select name="system.bestSave">{{selectOptions saveOptions selected=system.bestSave}}</select></label>
+        <label class="jjk-check"><input type="checkbox" name="system.heavenlyRestriction" {{checked system.heavenlyRestriction}}> Heavenly Restriction</label>
+      </div>
+      <div class="jjk-row">
+        <label>Technique / path <input type="text" name="system.techniqueName" value="{{system.techniqueName}}" placeholder="e.g. Limitless"></label>
+        <label>Layer path <input type="text" name="system.pathName" value="{{system.pathName}}" placeholder="e.g. Death Painting"></label>
+        <label class="jjk-check"><input type="checkbox" name="system.hasPassenger" {{checked system.hasPassenger}}> Hosts a passenger</label>
+      </div>
+    </div>
+    <div class="jjk-grade-badge">
+      <div class="rank">{{gradeLabel}}</div>
+      <div class="sub">Rank {{system.gradeRank}} · PF2e level {{system.level}}</div>
+      <div class="sub">Tier cards {{system.tierProgress.owned}}/3{{#if system.tierProgress.ready}} · <a data-action="promote" class="ready">Promote ▲</a>{{/if}}</div>
+    </div>
+  </header>
+
+  <div class="jjk-resources">
+    <div class="res hp"><span class="lbl">HP</span>
+      <input type="number" name="system.attributes.hp.value" value="{{system.attributes.hp.value}}"> / {{system.attributes.hp.max}}
+      <span class="lbl">temp</span><input type="number" name="system.attributes.hp.temp" value="{{system.attributes.hp.temp}}"></div>
+    <div class="res ce"><span class="lbl">CE</span>
+      <input type="number" name="system.attributes.ce.value" value="{{system.attributes.ce.value}}"> / {{system.attributes.ce.max}}
+      <a data-action="focusedFlow" title="Focused Flow (+2 CE)">+2</a> <a data-action="reset" title="Reset (full CE, clear composure/Pressure)">⟳</a></div>
+    <div class="res"><span class="lbl">Reinforcement</span><strong>{{system.reinforcement}}</strong></div>
+    <div class="res"><span class="lbl">AC</span><strong>{{system.attributes.ac.value}}</strong></div>
+    <div class="res"><span class="lbl">Cursed Attack</span><a data-action="rollAttack"><strong>{{cursedAttack}}</strong></a> <small>band {{bandRange}}</small></div>
+    <div class="res"><span class="lbl">Technique DC</span><strong>{{system.techniqueDC.value}}</strong></div>
+    <div class="res"><span class="lbl">Technique die</span><a data-action="rollOutput" title="Roll output damage"><strong>{{system.techniqueDie}}</strong></a></div>
+    <div class="res"><span class="lbl">Strike</span><a data-action="rollStrikeDamage" title="Reinforced Strike damage"><strong>{{system.strike.formula}}</strong></a></div>
+  </div>
+
+  <nav class="jjk-tabs">
+    <a class="{{#if (jjk-eq tab 'main')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="main">Main</a>
+    <a class="{{#if (jjk-eq tab 'cards')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="cards">Technique</a>
+    <a class="{{#if (jjk-eq tab 'gear')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="gear">Gear &amp; Vows</a>
+    <a class="{{#if (jjk-eq tab 'notes')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="notes">Details</a>
+  </nav>
+
+  {{#if (jjk-eq tab "main")}}
+  <section class="jjk-tab main">
+    <div class="jjk-cols">
+      <div class="col">
+        <h4>Attributes</h4>
+        <div class="jjk-abilities">
+          {{#each abilities}}
+          <div class="abil {{#if isKey}}key{{/if}}"><span>{{label}}</span>
+            <input type="number" name="system.abilities.{{key}}.mod" value="{{mod}}"></div>
+          {{/each}}
+        </div>
+        <h4>Saves &amp; Perception</h4>
+        <ul class="jjk-list">
+          {{#each saves}}<li><a data-action="rollSave" data-key="{{key}}">{{label}}</a><span class="mod">{{mod}}</span><span class="rank">{{rank}}</span></li>{{/each}}
+          <li><a data-action="rollPerception">Perception</a><span class="mod">{{perception}}</span></li>
+          <li><span>Speed</span><input type="number" name="system.attributes.speed" value="{{system.attributes.speed}}"> ft</li>
+          <li><span>Hero Points</span><input type="number" name="system.attributes.heroPoints" value="{{system.attributes.heroPoints}}" min="0" max="3"></li>
+          <li><span>Armor</span><span>{{#if system.attributes.ac.armorName}}{{system.attributes.ac.armorName}}{{else}}unarmored{{/if}}</span></li>
+        </ul>
+        <h4>Jujutsu</h4>
+        <ul class="jjk-list">
+          <li><span>Composure</span><input type="number" name="system.attributes.composure" value="{{system.attributes.composure}}" min="0" max="6"> <a data-action="blackFlash">Black Flash</a></li>
+          <li><span>Domain</span>
+            {{#if system.attributes.domainActive}}<strong class="danger">ACTIVE</strong> <a data-action="endDomain">End</a>
+            {{else}}<a data-action="openDomain">Open Domain</a> <small>(needs ½ CE)</small>{{/if}}</li>
+          {{#if system.hasPassenger}}
+          <li class="pressure"><span>Pressure</span>
+            <a data-action="pressure" data-delta="-1">−</a>
+            <span class="bar"><span style="width: {{pressurePct}}%"></span></span>
+            <strong>{{system.attributes.pressure}}</strong>/10
+            <a data-action="pressure" data-delta="1">+</a>
+            <a data-action="takeover">Save (DC {{system.takeoverDC}})</a></li>
+          {{/if}}
+        </ul>
+      </div>
+      <div class="col">
+        <h4>Skills</h4>
+        <ul class="jjk-list skills">
+          {{#each skills}}
+          <li><a data-action="rollSkill" data-key="{{key}}">{{label}}</a><small>{{ability}}</small>
+            <select name="{{name}}">{{selectOptions ../profOptions selected=rank}}</select><span class="mod">{{mod}}</span></li>
+          {{/each}}
+          <li><span>Lore name</span><input type="text" name="system.loreName" value="{{system.loreName}}"></li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4>Conditions</h4>
+        <ul class="jjk-list conds">
+          {{#each conditions.valued}}
+          <li class="{{#if value}}on{{/if}}"><span>{{label}}</span>
+            <a data-action="condStep" data-key="{{key}}" data-delta="-1">−</a><strong>{{value}}</strong><a data-action="condStep" data-key="{{key}}" data-delta="1">+</a></li>
+          {{/each}}
+        </ul>
+        <div class="jjk-toggles">
+          {{#each conditions.toggles}}
+          <label class="{{#if value}}on{{/if}}"><input type="checkbox" name="{{name}}" {{checked value}}> {{label}}</label>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if (jjk-eq tab "cards")}}
+  <section class="jjk-tab cards">
+    <p class="hint">Drag cards here as the GM hands them out. Cards in your current Grade tier raise Cursed Attack and Technique DC by +1 each; three tier cards means you're ready to promote. Layer-path cards don't count toward promotion.</p>
+    {{#each abilityTiers}}
+    <h4>{{label}}</h4>
+    <ol class="jjk-items">
+      {{#each cards}}
+      <li class="jjk-item" data-item-id="{{id}}">
+        <img src="{{img}}" alt=""><a class="name" data-action="itemUse">{{name}}</a>
+        <span class="tags">{{#if universal}}<em>universal</em>{{/if}}{{#if layer}}<em>path</em>{{/if}}</span>
+        <span class="glyph">{{glyph}}</span><span class="cost">{{cost}}</span>
+        <a data-action="itemEdit" title="Edit">✎</a><a data-action="itemDelete" title="Delete">✕</a>
+      </li>
+      {{/each}}
+    </ol>
+    {{else}}
+    <p class="empty">No cards yet. Your GM gives you your technique's Player Primer and its starting card.</p>
+    {{/each}}
+    <a class="jjk-add" data-action="itemCreate" data-type="ability">+ Add a blank card</a>
+  </section>
+  {{/if}}
+
+  {{#if (jjk-eq tab "gear")}}
+  <section class="jjk-tab gear">
+    <h4>Weapons &amp; Cursed Tools <a class="jjk-add" data-action="itemCreate" data-type="weapon">+</a></h4>
+    <ol class="jjk-items">
+      {{#each weapons}}
+      <li class="jjk-item" data-item-id="{{id}}"><img src="{{img}}" alt=""><a class="name" data-action="itemUse">{{name}}</a>
+        <span class="cost">{{system.dieSize}} {{system.damageType}}{{#if system.cursedTool}} · charge {{system.charge}}{{/if}}</span>
+        <a data-action="itemEdit">✎</a><a data-action="itemDelete">✕</a></li>
+      {{/each}}
+    </ol>
+    <h4>Armor <a class="jjk-add" data-action="itemCreate" data-type="armor">+</a></h4>
+    <ol class="jjk-items">
+      {{#each armor}}
+      <li class="jjk-item" data-item-id="{{id}}"><img src="{{img}}" alt=""><a class="name" data-action="itemEdit">{{name}}</a>
+        <span class="cost">+{{system.acBonus}} AC, Dex cap {{system.dexCap}}</span>
+        <a data-action="itemToggleEquip">{{#if system.equipped}}worn{{else}}stowed{{/if}}</a><a data-action="itemDelete">✕</a></li>
+      {{/each}}
+    </ol>
+    <h4>Gear <a class="jjk-add" data-action="itemCreate" data-type="gear">+</a></h4>
+    <ol class="jjk-items">
+      {{#each gear}}
+      <li class="jjk-item" data-item-id="{{id}}"><img src="{{img}}" alt=""><a class="name" data-action="itemUse">{{name}}</a>
+        <span class="cost">×{{system.quantity}} · {{system.bulk}}</span><a data-action="itemEdit">✎</a><a data-action="itemDelete">✕</a></li>
+      {{/each}}
+    </ol>
+    <h4>Binding Vows <a class="jjk-add" data-action="itemCreate" data-type="vow">+</a></h4>
+    <ol class="jjk-items">
+      {{#each vows}}
+      <li class="jjk-item {{#if system.broken}}broken{{/if}}" data-item-id="{{id}}"><img src="{{img}}" alt=""><a class="name" data-action="itemUse">{{name}}</a>
+        <span class="cost">{{system.weight}} · {{system.restriction}}</span><a data-action="itemEdit">✎</a><a data-action="itemDelete">✕</a></li>
+      {{/each}}
+    </ol>
+  </section>
+  {{/if}}
+
+  {{#if (jjk-eq tab "notes")}}
+  <section class="jjk-tab notes">
+    <div class="jjk-row">
+      <label>Ancestry <input type="text" name="system.details.ancestry" value="{{system.details.ancestry}}"></label>
+      <label>Ancestry HP <input type="number" name="system.details.ancestryHP" value="{{system.details.ancestryHP}}"></label>
+      <label>Background <input type="text" name="system.details.background" value="{{system.details.background}}"></label>
+    </div>
+    <div class="jjk-row">
+      <label class="wide">Concept <input type="text" name="system.details.concept" value="{{system.details.concept}}"></label>
+      <label>HP bonus <input type="number" name="system.attributes.hp.bonus" value="{{system.attributes.hp.bonus}}"></label>
+      <label>CE bonus <input type="number" name="system.attributes.ce.bonus" value="{{system.attributes.ce.bonus}}"></label>
+      <label>AC bonus <input type="number" name="system.attributes.ac.bonus" value="{{system.attributes.ac.bonus}}"></label>
+    </div>
+    {{#if origins.length}}
+    <ol class="jjk-items">
+      {{#each origins}}<li class="jjk-item" data-item-id="{{id}}"><img src="{{img}}" alt=""><a class="name" data-action="itemEdit">{{name}}</a><span class="cost">{{type}}</span><a data-action="itemDelete">✕</a></li>{{/each}}
+    </ol>
+    {{/if}}
+    <h4>Notes</h4>
+    <prose-mirror name="system.details.notes" value="{{source.details.notes}}" toggled>{{{enrichedNotes}}}</prose-mirror>
+  </section>
+  {{/if}}
+</div>
