@@ -2,7 +2,7 @@
   "id": "jjk-cursed-energy",
   "title": "Jujutsu Kaisen: Cursed Energy",
   "description": "A standalone jujutsu-sorcery game built on Pathfinder 2e (Remaster) core mechanics: Grade-based milestone progression, cursed energy, Innate Techniques as hidden card ladders, Black Flash, Domain Expansion, Binding Vows and Cursed Paths.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "compatibility": {
     "minimum": "14",
     "verified": "14"
@@ -14,7 +14,7 @@
   ],
   "url": "https://github.com/Jcookie19203/jjk-cursed-energy",
   "manifest": "https://github.com/Jcookie19203/jjk-cursed-energy/releases/latest/download/system.json",
-  "download": "https://github.com/Jcookie19203/jjk-cursed-energy/releases/download/v0.2.1/jjk-cursed-energy.zip",
+  "download": "https://github.com/Jcookie19203/jjk-cursed-energy/releases/download/v0.2.2/jjk-cursed-energy.zip",
   "license": "LICENSE.md",
   "esmodules": [
     "module/jjk.mjs"

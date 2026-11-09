@@ -88,8 +88,8 @@ function parseCard(file, md, technique, ladder) {
 
   const costMatch = mech.match(/\*\*Cost:?\s*([^*]+?)\*\*/) ?? body.match(/\*\*Cost:?\s*([^*]+?)\*\*/);
   const costText = costMatch ? costMatch[1].replace(/\.$/, "").trim() : "";
-  // "2 CE", "2–4 CE" and variable "2+ CE" all record the minimum.
-  const ceNum = costText.match(/^(\d+)\+?(?:\s*[–-]\s*\d+)?\s*CE/);
+  // "2 CE", "2–4 CE", variable "2+ CE" and "1 to (Grade Rank + 2) CE" all record the minimum.
+  const ceNum = costText.match(/^(\d+)(?:\+|\s*[–-]\s*\d+|\s+to\s+[^,]*?)?\s*CE\b/);
   const allPool = /all (?:your )?remaining CE|entire remaining CE|whole CE pool|entire CE/i.test(costText);
 
   let actions = "none";

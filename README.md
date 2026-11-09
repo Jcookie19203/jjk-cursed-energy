@@ -34,7 +34,7 @@ To install by hand instead, download `jjk-cursed-energy.zip` from the latest rel
 
 **Compendiums**
 - *Visible to players:* the Rules (Cursed Energy), PF2e Core summary, Ancestries, Backgrounds, Equipment, Player Primers and Curse Field Notes (a stat-free player brief for every curse).
-- *GM only:* Cursed Techniques (63 techniques × 21 cards), Cursed Paths, GM Master Sheets, GM Guide, Curses & Rival Sorcerers (110 ready-to-run actors, canon and original, foldered by Grade) and Cursed Tools (104 tools and cursed objects, foldered by Grade, ready to drag onto a sheet).
+- *GM only:* Cursed Techniques (64 techniques × 21 cards), Cursed Paths, GM Master Sheets, GM Guide, Curses & Rival Sorcerers (110 ready-to-run actors, canon and original, foldered by Grade) and Cursed Tools (104 tools and cursed objects, foldered by Grade, ready to drag onto a sheet).
 
 ## How to run a technique at the table
 1. The player makes a Sorcerer and picks a technique.

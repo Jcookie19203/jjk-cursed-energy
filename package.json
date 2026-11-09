@@ -1,6 +1,6 @@
 {
   "name": "jjk-cursed-energy",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "description": "Build tooling for the Jujutsu Kaisen: Cursed Energy Foundry VTT system.",
