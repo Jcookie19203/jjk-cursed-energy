@@ -4,7 +4,7 @@
 import * as JJK from "./config.mjs";
 import { SorcererData, CurseData } from "./data/actor.mjs";
 import { AbilityData, WeaponData, ArmorData, GearData, VowData, AncestryData, BackgroundData } from "./data/item.mjs";
-import { JJKActor } from "./documents/actor.mjs";
+import { JJKActor, syncConditionFromEffect } from "./documents/actor.mjs";
 import { JJKItem } from "./documents/item.mjs";
 import { JJKSorcererSheet, JJKCurseSheet } from "./sheets/actor-sheets.mjs";
 import { JJKItemSheet } from "./sheets/item-sheet.mjs";
@@ -70,6 +70,8 @@ Hooks.once("init", () => {
   ]);
 
   registerChatHooks();
+  Hooks.on("createActiveEffect", (effect, options, userId) => syncConditionFromEffect(effect, true, userId));
+  Hooks.on("deleteActiveEffect", (effect, options, userId) => syncConditionFromEffect(effect, false, userId));
   registerCombatHooks();
 });
 

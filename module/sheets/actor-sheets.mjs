@@ -193,7 +193,7 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const v = Math.max(0, (this.document.system.conditions[key] ?? 0) + delta);
     this.document.update({ [`system.conditions.${key}`]: v });
   }
-  static #reset() { this.document.reset(); }
+  static #reset() { this.document.restoreFlow(); }
   static #focusedFlow() { this.document.focusedFlow(); }
   static #openDomain() { this.document.openDomain(); }
   static #endDomain() { this.document.endDomain(); }

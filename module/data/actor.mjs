@@ -91,7 +91,11 @@ export class SorcererData extends foundry.abstract.TypeDataModel {
 
     const attackBase = Math.min(g.attack[0] + earned, g.attack[1]);
     const dcBase = Math.min(g.dc[0] + earned, g.dc[1]);
-    this.cursedAttack = { base: attackBase, value: attackBase - status - this.mods.attackCircumstance };
+    // Composure: +1 status bonus to attack rolls and Will saves per point (Core Rules III).
+    const composure = this.attributes.composure;
+    this.hasBlackFlashFocus = !!this.parent?.items?.some(i => i.type === "ability" && /black flash focus/i.test(i.name));
+    this.composureMax = this.hasBlackFlashFocus ? 6 : 4;
+    this.cursedAttack = { base: attackBase, value: attackBase - status - this.mods.attackCircumstance + composure };
     this.techniqueDC = { base: dcBase, value: dcBase - status };
 
     // Resources.
@@ -111,7 +115,7 @@ export class SorcererData extends foundry.abstract.TypeDataModel {
     for (const [key, cfg] of Object.entries(SAVES)) {
       const rank = key === this.bestSave ? g.bestSave : g.worstSave;
       const abil = this.abilities[cfg.ability].mod;
-      this.saves[key] = { rank, mod: abil + profBonus(rank, level) - statusPenalty(this.conditions, cfg.ability) };
+      this.saves[key] = { rank, mod: abil + profBonus(rank, level) - statusPenalty(this.conditions, cfg.ability) + (key === "will" ? composure : 0) };
     }
     const percRank = g.keyProf;
     this.attributes.perception = { rank: percRank, mod: this.abilities.wis.mod + profBonus(percRank, level) - status };

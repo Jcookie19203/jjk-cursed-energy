@@ -88,7 +88,8 @@ function parseCard(file, md, technique, ladder) {
 
   const costMatch = mech.match(/\*\*Cost:?\s*([^*]+?)\*\*/) ?? body.match(/\*\*Cost:?\s*([^*]+?)\*\*/);
   const costText = costMatch ? costMatch[1].replace(/\.$/, "").trim() : "";
-  const ceNum = costText.match(/^(\d+)(?:\s*[–-]\s*\d+)?\s*CE/);
+  // "2 CE", "2–4 CE" and variable "2+ CE" all record the minimum.
+  const ceNum = costText.match(/^(\d+)\+?(?:\s*[–-]\s*\d+)?\s*CE/);
   const allPool = /all (?:your )?remaining CE|entire remaining CE|whole CE pool|entire CE/i.test(costText);
 
   let actions = "none";
@@ -96,7 +97,7 @@ function parseCard(file, md, technique, ladder) {
   if (a) actions = a[1];
   else if (/`free`/.test(mech)) actions = "free";
   else if (/`reaction`/.test(mech)) actions = "reaction";
-  else if (/passive|modifies/i.test(mech)) actions = "passive";
+  else if (/passive|modifies|enhances|upgrade/i.test(mech) || /^Full rules in /m.test(body)) actions = "passive";
 
   const traitMatch = mech.match(/·\s*\*([^*]+)\*/);
   const traits = traitMatch ? traitMatch[1].trim() : "";

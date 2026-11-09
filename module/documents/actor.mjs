@@ -21,25 +21,6 @@ export class JJKActor extends Actor {
     else this.updateSource({ "prototypeToken.disposition": -1 });
   }
 
-  /* ---------- keep derived stats fresh when items change ---------- */
-  // On v14 a create/update/delete of an embedded item doesn't re-run the actor's derived data, so the
-  // tier counter, Cursed Attack/DC band, AC and the Promote button would go stale. Recompute first.
-
-  _onCreateDescendantDocuments(...args) {
-    this.prepareData();
-    super._onCreateDescendantDocuments(...args);
-  }
-
-  _onUpdateDescendantDocuments(...args) {
-    this.prepareData();
-    super._onUpdateDescendantDocuments(...args);
-  }
-
-  _onDeleteDescendantDocuments(...args) {
-    this.prepareData();
-    super._onDeleteDescendantDocuments(...args);
-  }
-
   /* ---------- modifiers ---------- */
 
   getSaveMod(key) {
@@ -116,12 +97,19 @@ export class JJKActor extends Actor {
     ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), content: `<div class="jjk-chat"><strong>Focused Flow</strong>: regains 2 CE.</div>` });
   }
 
-  /** Full rest / 10-minute meditation: refill CE, clear composure and Pressure. */
-  async reset() {
-    const up = { "system.attributes.ce.value": this.system.attributes.ce.max, "system.attributes.domainActive": false };
+  /**
+   * The Reset action (full rest / 10-minute meditation): refill CE, clear composure and Pressure.
+   * Not named reset(): Foundry calls Document#reset() internally to re-prepare data whenever an
+   * embedded item or effect changes, and overriding it would fire this gameplay action instead.
+   */
+  async restoreFlow() {
+    const burnedOut = !!this.getFlag(SYSTEM_ID, "burnedOut");
+    const up = { "system.attributes.ce.value": this.system.attributes.ce.max, "system.attributes.domainActive": false, [`flags.${SYSTEM_ID}.-=burnedOut`]: null };
     if (this.isSorcerer) Object.assign(up, { "system.attributes.composure": 0, "system.attributes.pressure": 0 });
+    // The Domain aftermath (fatigued at 0 CE) lasts "until you Reset" (Core Rules IV).
+    if (burnedOut) up["system.conditions.fatigued"] = false;
     await this.update(up);
-    ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), content: `<div class="jjk-chat"><strong>Reset</strong>: CE restored${this.isSorcerer ? ", composure and Pressure cleared" : ""}.</div>` });
+    ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), content: `<div class="jjk-chat"><strong>Reset</strong>: CE restored${this.isSorcerer ? ", composure and Pressure cleared" : ""}${burnedOut ? ", Domain fatigue gone" : ""}.</div>` });
   }
 
   /* ---------- damage ---------- */
@@ -139,28 +127,56 @@ export class JJKActor extends Actor {
     let temp = a.hp.temp;
     const fromTemp = Math.min(temp, dmg);
     temp -= fromTemp;
-    const hp = Math.max(0, a.hp.value - (dmg - fromTemp));
-    await this.update({ "system.attributes.hp.value": hp, "system.attributes.hp.temp": temp, "system.attributes.ce.value": ce });
-    const drop = hp === 0 ? " — <strong>drops to 0 HP</strong>" : "";
-    ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), whisper: game.users.filter(u => u.isGM).map(u => u.id), content: `<div class="jjk-chat">${this.name} takes <strong>${dmg}</strong> damage${note}${drop}.</div>` });
+    const before = a.hp.value;
+    const hp = Math.max(0, before - (dmg - fromTemp));
+    const up = { "system.attributes.hp.value": hp, "system.attributes.hp.temp": temp, "system.attributes.ce.value": ce };
+    let drop = "";
+    if (this.isSorcerer && hp === 0 && dmg > 0) {
+      // PF2e: drop to 0 → dying 1 + wounded and unconscious; damage while dying → dying +1.
+      const c = this.system.conditions;
+      const dying = before > 0 ? 1 + c.wounded : c.dying + 1;
+      const deathAt = Math.max(1, 4 - c.doomed);
+      Object.assign(up, { "system.conditions.dying": Math.min(dying, deathAt), "system.conditions.unconscious": true });
+      drop = dying >= deathAt ? " — <strong>DIES</strong>" : ` — <strong>${before > 0 ? "drops to 0 HP, " : ""}dying ${dying}</strong>`;
+    } else if (hp === 0 && before > 0) {
+      drop = " — <strong>drops to 0 HP</strong>";
+      if (!this.isSorcerer) this.toggleStatusEffect("dead", { active: true, overlay: true }).catch(() => null);
+    }
+    // Composure breaks if one blow takes you from half HP or more to below half (Core Rules III).
+    let composureNote = "";
+    if (this.isSorcerer && this.system.attributes.composure > 0 && before >= a.hp.max / 2 && hp < a.hp.max / 2) {
+      up["system.attributes.composure"] = 0;
+      composureNote = " Composure broken.";
+    }
+    await this.update(up);
+    ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), whisper: game.users.filter(u => u.isGM).map(u => u.id), content: `<div class="jjk-chat">${this.name} takes <strong>${dmg}</strong> damage${note}${drop}.${composureNote}</div>` });
     if (hp === 0 && this.isSorcerer && this.system.hasPassenger) await this.adjustPressure(1, "dropped to 0 HP");
   }
 
   async applyHealing(amount) {
     const hp = this.system.attributes.hp;
-    await this.update({ "system.attributes.hp.value": Math.min(hp.max, hp.value + Math.max(0, amount)) });
+    const value = Math.min(hp.max, hp.value + Math.max(0, amount));
+    const up = { "system.attributes.hp.value": value };
+    // PF2e: regaining HP ends dying (wounded +1) and you wake up.
+    if (this.isSorcerer && hp.value === 0 && value > 0) {
+      const c = this.system.conditions;
+      if (c.dying > 0) Object.assign(up, { "system.conditions.dying": 0, "system.conditions.wounded": c.wounded + 1 });
+      up["system.conditions.unconscious"] = false;
+    }
+    await this.update(up);
   }
 
   /* ---------- signature mechanics ---------- */
 
-  async attemptBlackFlash() {
-    if (!this.isSorcerer) return rollFlat({ actor: this, label: "Black Flash", dc: 8 });
+  /** Black Flash flat check. baseDC 8 on a crit; 10 for Black Flash Focus on a normal hit. */
+  async attemptBlackFlash({ baseDC = 8 } = {}) {
+    if (!this.isSorcerer) return rollFlat({ actor: this, label: "Black Flash", dc: baseDC });
     const comp = this.system.attributes.composure;
-    const dc = Math.max(3, 8 - comp);
+    const dc = Math.max(3, baseDC - comp);
     const ok = await rollFlat({ actor: this, label: "Black Flash", dc });
     if (!ok) return;
     const gain = this.system.gradeRank;
-    await this.update({ "system.attributes.composure": Math.min(6, comp + 1) });
+    await this.update({ "system.attributes.composure": Math.min(this.system.composureMax ?? 4, comp + 1) });
     await this.gainCE(gain);
     ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: this }),
@@ -181,7 +197,7 @@ export class JJKActor extends Actor {
   }
 
   async endDomain() {
-    await this.update({ "system.attributes.domainActive": false, "system.attributes.ce.value": 0, "system.conditions.fatigued": true });
+    await this.update({ "system.attributes.domainActive": false, "system.attributes.ce.value": 0, "system.conditions.fatigued": true, [`flags.${SYSTEM_ID}.burnedOut`]: true });
     ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), content: `<div class="jjk-chat"><strong>Domain collapses.</strong> ${this.name} is fatigued at 0 CE until they Reset.</div>` });
   }
 
@@ -220,10 +236,33 @@ export class JJKActor extends Actor {
     if (userId !== game.user.id) return;
     const cond = changed.system?.conditions;
     if (!cond) return;
+    // PF2e drained: the HP lost stays lost when the condition ends, so persist the reduced current HP.
+    if ("drained" in cond && this.isSorcerer && this._source.system.attributes.hp.value > this.system.attributes.hp.value) {
+      await this.update({ "system.attributes.hp.value": this.system.attributes.hp.value });
+    }
     for (const [key, value] of Object.entries(cond)) {
       if (!(key in VALUED_CONDITIONS) && !(key in TOGGLE_CONDITIONS)) continue;
       const active = typeof value === "boolean" ? value : value > 0;
       try { await this.toggleStatusEffect(key, { active }); } catch (err) { console.warn(`${SYSTEM_ID} | status sync failed for ${key}`, err); }
     }
   }
+}
+
+/**
+ * Keep the sheet's conditions in step with status icons toggled from the token HUD.
+ * (The sheet → token direction is handled in JJKActor#_onUpdate.)
+ */
+export function syncConditionFromEffect(effect, active, userId) {
+  if (userId !== game.user.id) return;
+  const actor = effect.parent;
+  if (!(actor instanceof Actor) || !actor.system?.conditions) return;
+  const up = {};
+  for (const key of effect.statuses ?? []) {
+    const current = actor.system.conditions[key];
+    if (key in VALUED_CONDITIONS) {
+      if (active && !(current > 0)) up[`system.conditions.${key}`] = 1;
+      else if (!active && current > 0) up[`system.conditions.${key}`] = 0;
+    } else if (key in TOGGLE_CONDITIONS && current !== active) up[`system.conditions.${key}`] = active;
+  }
+  if (!foundry.utils.isEmpty(up)) actor.update(up);
 }

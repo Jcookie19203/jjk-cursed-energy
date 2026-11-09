@@ -21,7 +21,14 @@ async function onAction(event, message) {
     case "requestSave": {
       const targets = chosenActors();
       if (!targets.length) return ui.notifications.warn("Select a token (or assign a character) to roll the save.");
-      for (const a of targets) await a.rollSave(button.dataset.save, { dc: Number(button.dataset.dc), prompt: false, dcLabel: item?.name ?? "DC" });
+      const basic = button.dataset.basic === "1";
+      const BASIC = ["takes <strong>double</strong> damage", "takes <strong>full</strong> damage", "takes <strong>half</strong> damage", "takes <strong>no</strong> damage"];
+      for (const a of targets) {
+        const r = await a.rollSave(button.dataset.save, { dc: Number(button.dataset.dc), prompt: false, dcLabel: item?.name ?? "DC" });
+        if (basic && r?.degree != null) {
+          ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: a }), content: `<div class="jjk-chat">Basic save: ${a.name} ${BASIC[r.degree]}.</div>` });
+        }
+      }
       return;
     }
     case "applyDamage":
@@ -71,6 +78,7 @@ async function onAction(event, message) {
     }
     case "pressure": return actor.adjustPressure(Number(button.dataset.amount), item?.name);
     case "blackFlash": return actor.attemptBlackFlash();
+    case "blackFlashFocus": if (await actor.spendCE(2, { reason: "Black Flash Focus" })) return actor.attemptBlackFlash({ baseDC: 10 }); return;
     case "takeover": return actor.rollTakeover();
   }
 }
@@ -92,7 +100,8 @@ export function registerCombatHooks() {
     if (!actor) return;
     if (game.settings.get(SYSTEM_ID, "steadyFlow")) {
       const ce = actor.system.attributes?.ce;
-      if (ce && ce.value < ce.max) await actor.update({ "system.attributes.ce.value": ce.value + 1 });
+      // After a Domain the pool stays at 0 until the sorcerer Resets (Core Rules IV).
+      if (ce && ce.value < ce.max && !actor.getFlag(SYSTEM_ID, "burnedOut")) await actor.update({ "system.attributes.ce.value": ce.value + 1 });
     }
     if (actor.type === "sorcerer" && actor.system.hasPassenger && game.settings.get(SYSTEM_ID, "takeoverPrompts")) {
       const p = actor.system.attributes.pressure;

@@ -40,7 +40,7 @@ export class JJKItem extends Item {
       if (s.resolution === "attack") buttons.push(`<button type="button" data-jjk-action="attack">Cursed Strike</button>`);
       if (s.resolution === "save" && actor) {
         const dc = actor.system.techniqueDC?.value;
-        buttons.push(`<button type="button" data-jjk-action="requestSave" data-save="${s.save}" data-dc="${dc}">${SAVES[s.save].label} DC ${dc}${s.basicSave ? " (basic)" : ""}</button>`);
+        buttons.push(`<button type="button" data-jjk-action="requestSave" data-save="${s.save}" data-dc="${dc}" data-basic="${s.basicSave ? 1 : 0}">${SAVES[s.save].label} DC ${dc}${s.basicSave ? " (basic)" : ""}</button>`);
       }
       if (s.usesOutput) buttons.push(`<button type="button" data-jjk-action="outputDamage" data-ce="${s.ce ?? 1}">Output Damage</button>`);
       if (s.pressure) buttons.push(`<button type="button" data-jjk-action="pressure" data-amount="${s.pressure}">Add ${s.pressure} Pressure</button>`);
