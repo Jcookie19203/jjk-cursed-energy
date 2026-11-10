@@ -152,3 +152,5 @@
 .jjk .jjk-stock-gm input[type="number"] { width: 5.5em; }
 .jjk .jjk-shop-desc { margin-bottom: 8px; }
 .jjk-chat.jjk-shop-msg ul { margin: 4px 0; padding-left: 18px; }
+/* Core item icons are white SVGs; give them a dark tile so they show on light sheets. */
+.jjk .jjk-stock .jjk-item img, .jjk [data-sell-id] img { background: var(--jjk-accent); border-radius: 4px; padding: 2px; }

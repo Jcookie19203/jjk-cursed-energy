@@ -20,8 +20,9 @@ export class JJKActor extends Actor {
     }
     else if (this.type === "shop") {
       // Basic shops open to every player; rare shops stay hidden until someone finds them.
+      // (Importing from a compendium resets ownership to default 0, so treat "none" as "not set".)
       const L = CONST.DOCUMENT_OWNERSHIP_LEVELS;
-      const open = (this.system.kind ?? "basic") === "basic" && data.ownership?.default === undefined;
+      const open = (this.system.kind ?? "basic") === "basic" && !((data.ownership?.default ?? 0) > L.NONE);
       this.updateSource({ "prototypeToken.disposition": 0, "prototypeToken.actorLink": true, "system.lastRestock": game.time.worldTime, ...(open ? { "ownership.default": L.OBSERVER } : {}) });
     }
     else this.updateSource({ "prototypeToken.disposition": -1 });
