@@ -7,5 +7,6 @@
   "TYPES.Item.gear": "Gear",
   "TYPES.Item.vow": "Binding Vow",
   "TYPES.Item.ancestry": "Ancestry",
-  "TYPES.Item.background": "Background"
+  "TYPES.Item.background": "Background",
+  "TYPES.Actor.shop": "Shop / Supplier"
 }

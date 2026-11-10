@@ -40,7 +40,12 @@
           {{#each saves}}<li><a data-action="rollSave" data-key="{{key}}">{{label}}</a><input type="number" name="system.saves.{{key}}" value="{{base}}"><span class="mod">{{mod}}</span></li>{{/each}}
           <li><a data-action="rollPerception">Perception</a><input type="number" name="system.attributes.perception.base" value="{{system.attributes.perception.base}}"><span class="mod">{{perception}}</span></li>
           <li><span>Speed</span><input type="text" name="system.attributes.speed" value="{{system.attributes.speed}}"></li>
-          <li><span>Domain</span>{{#if system.attributes.domainActive}}<strong class="danger">ACTIVE</strong> <a data-action="endDomain">End</a>{{else}}<a data-action="openDomain">Open Domain</a>{{/if}}</li>
+          <li><span>Domain</span>{{#if system.attributes.domainActive}}<strong class="danger">ACTIVE</strong>{{#if domainState}} <span class="hint">{{domainState.pulsesLeft}} pulse(s) left · barrier {{domainState.barrierHP}}/{{domainState.barrierMax}}</span>{{/if}}
+            <a data-action="endDomain">End</a>{{#if isGM}} <a data-action="domainPulse" title="Run the next sure-hit pulse now (outside combat)">Pulse</a>{{/if}}
+            {{else}}<a data-action="openDomain">Open Domain</a> <small>(needs ½ CE)</small>{{/if}}</li>
+          <li class="jjk-counters"><span>Counters</span>
+            <label class="jjk-check" title="Simple Domain / Falling Blossom Emotion: you save normally against a sure hit while you hold it"><input type="checkbox" class="jjk-counter" data-counter="simpleDomain" {{checked counters.simpleDomain}}> Simple Domain</label>
+            <label class="jjk-check" title="Domain Amplification: immune to a sure hit until the start of your next turn"><input type="checkbox" class="jjk-counter" data-counter="amplification" {{checked counters.amplification}}> Domain Amplification</label></li>
         </ul>
         <h4>IWR &amp; Languages</h4>
         <div class="jjk-stack">
@@ -93,6 +98,21 @@
 
   {{#if (jjk-eq tab "notes")}}
   <section class="jjk-tab notes">
+    <h4>Domain <label class="jjk-check"><input type="checkbox" name="system.hasDomain" {{checked system.hasDomain}}> Has a Domain</label></h4>
+    {{#if system.hasDomain}}
+    <div class="jjk-grid">
+      <label class="wide">Name <input type="text" name="system.domainName" value="{{system.domainName}}"></label>
+      <label>Radius (ft) <input type="number" name="system.domain.radius" value="{{system.domain.radius}}" min="5" step="5"></label>
+      <label>Sure-hit damage <input type="text" name="system.domain.damage" value="{{system.domain.damage}}" placeholder="output, 8d6, or blank"></label>
+      <label>Damage type <input type="text" name="system.domain.damageType" value="{{system.domain.damageType}}" placeholder="force"></label>
+      <label>Amplify inside <select name="system.domain.amplify">{{selectOptions domainAmplifyOptions selected=system.domain.amplify}}</select></label>
+      <label class="wide">Conditions each pulse <input type="text" name="system.domain.conditions" value="{{system.domain.conditions}}" placeholder="stunned 1, off-guard, slowed 1"></label>
+      <label class="wide">Other effect (shown in chat) <input type="text" name="system.domain.effect" value="{{system.domain.effect}}"></label>
+      <label>Extra rounds (blank = by Grade) <input type="number" name="system.domain.rounds" value="{{system.domain.rounds}}" min="0"></label>
+      <label>Barrier Hardness (blank = Reinf. ×2) <input type="number" name="system.domain.hardness" value="{{system.domain.hardness}}" min="0"></label>
+      <label>Barrier HP (blank = max CE ×3) <input type="number" name="system.domain.barrierHP" value="{{system.domain.barrierHP}}" min="1"></label>
+    </div>
+    {{/if}}
     <prose-mirror name="system.description" value="{{source.description}}" toggled>{{{enrichedDescription}}}</prose-mirror>
   </section>
   {{/if}}

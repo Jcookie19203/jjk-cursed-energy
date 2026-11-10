@@ -68,8 +68,12 @@
         <ul class="jjk-list">
           <li><span>Composure</span><input type="number" name="system.attributes.composure" value="{{system.attributes.composure}}" min="0" max="6"> <a data-action="blackFlash">Black Flash</a></li>
           <li><span>Domain</span>
-            {{#if system.attributes.domainActive}}<strong class="danger">ACTIVE</strong> <a data-action="endDomain">End</a>
+            {{#if system.attributes.domainActive}}<strong class="danger">ACTIVE</strong>{{#if domainState}} <span class="hint">{{domainState.pulsesLeft}} pulse(s) left · barrier {{domainState.barrierHP}}/{{domainState.barrierMax}}</span>{{/if}}
+            <a data-action="endDomain">End</a>{{#if isGM}} <a data-action="domainPulse" title="Run the next sure-hit pulse now (outside combat)">Pulse</a>{{/if}}
             {{else}}<a data-action="openDomain">Open Domain</a> <small>(needs ½ CE)</small>{{/if}}</li>
+          <li class="jjk-counters"><span>Counters</span>
+            <label class="jjk-check" title="Simple Domain / Falling Blossom Emotion: you save normally against a sure hit while you hold it"><input type="checkbox" class="jjk-counter" data-counter="simpleDomain" {{checked counters.simpleDomain}}> Simple Domain</label>
+            <label class="jjk-check" title="Domain Amplification: immune to a sure hit until the start of your next turn"><input type="checkbox" class="jjk-counter" data-counter="amplification" {{checked counters.amplification}}> Domain Amplification</label></li>
           {{#if system.hasPassenger}}
           <li class="pressure"><span>Pressure</span>
             <a data-action="pressure" data-delta="-1">−</a>
@@ -161,6 +165,16 @@
 
   {{#if (jjk-eq tab "gear")}}
   <section class="jjk-tab gear">
+    <div class="jjk-money">
+      <label>Wallet ¥ <input type="number" name="system.yen" value="{{system.yen}}" min="0" step="1000" {{#unless isGM}}disabled title="Your GM pays you; spend it in a shop"{{/unless}}></label>
+      <strong>{{wallet}}</strong>
+      {{#if isGM}}<a data-action="payActor">+ Pay</a>{{/if}}
+      <a data-action="searchSupplier" class="jjk-search">🔍 Look for a supplier</a>
+      {{#if searchWait}}<span class="hint">next search in {{searchWait}}</span>{{/if}}
+    </div>
+    <div class="jjk-shops">Shops:
+      {{#each knownShops}}<a data-action="openShop" data-shop-id="{{id}}" class="{{#if rare}}rare{{/if}}" title="{{location}}">{{name}}</a>{{else}}<span class="hint">none known yet</span>{{/each}}
+    </div>
     <h4>Weapons &amp; Cursed Tools <a class="jjk-add" data-action="itemCreate" data-type="weapon">+</a></h4>
     <ol class="jjk-items">
       {{#each weapons}}

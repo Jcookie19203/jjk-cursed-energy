@@ -1,0 +1,119 @@
+<div class="jjk-sheet-body jjk-shop">
+  <header class="jjk-header">
+    <img class="profile" src="{{actor.img}}" data-edit="img" alt="{{actor.name}}" data-action="editImage">
+    <div class="jjk-header-main">
+      <input class="jjk-name" type="text" name="name" value="{{actor.name}}" placeholder="Shop name">
+      <div class="jjk-row">
+        {{#if isGM}}
+        <label>Type <select name="system.kind">{{selectOptions kindOptions selected=system.kind}}</select></label>
+        <label class="wide">Location <input type="text" name="system.location" value="{{system.location}}" placeholder="e.g. behind the pachinko parlour, Kabukicho"></label>
+        {{else}}
+        {{#if system.location}}<span class="jjk-shop-where">📍 {{system.location}}</span>{{/if}}
+        {{/if}}
+      </div>
+    </div>
+    <div class="jjk-grade-badge">
+      <div class="rank">{{kindLabel}}</div>
+      <div class="sub">{{clock.now}}</div>
+      {{#if clock.restock}}<div class="sub">Restocks in {{clock.restock}}</div>{{/if}}
+    </div>
+  </header>
+
+  <div class="jjk-shop-buyer">
+    {{#if buyerId}}
+    <label>Shopping as <select class="jjk-buyer jjk-live">{{selectOptions buyerOptions selected=buyerId}}</select></label>
+    <span class="jjk-wallet">Wallet <strong>{{wallet}}</strong></span>
+    {{else}}
+    <span class="hint">You need a sorcerer of your own to shop.</span>
+    {{/if}}
+  </div>
+
+  <section class="jjk-tab">
+    {{#if (jjk-and (jjk-not isGM) enrichedDescription)}}<div class="jjk-shop-desc">{{{enrichedDescription}}}</div>{{/if}}
+
+    <h4>For sale</h4>
+    <ol class="jjk-items jjk-stock">
+      {{#each stock}}
+      <li class="jjk-item {{#unless available}}soldout{{/unless}} {{#if offCycle}}offcycle{{/if}}" data-item-id="{{id}}">
+        <div class="jjk-stock-line">
+          <img src="{{img}}" alt="">
+          <a class="name" data-action="viewItem">{{name}}{{per}}</a>
+          <span class="cost">{{type}}</span>
+          <span class="jjk-price">{{price}}</span>
+          <span class="cost">{{#if offCycle}}not out this cycle{{else}}{{stockText}}{{/if}}</span>
+          {{#if available}}
+          {{#if isGear}}<input type="number" class="qty jjk-live" value="1" min="1" title="How many">{{/if}}
+          <a class="jjk-buy {{#unless affordable}}poor{{/unless}}" data-action="buy">Buy</a>
+          {{/if}}
+        </div>
+        {{#if ../isGM}}
+        <div class="jjk-stock-gm">
+          <label><input type="checkbox" data-stock="unlimited" {{checked st.unlimited}}> Always in stock</label>
+          {{#unless st.unlimited}}
+          <label>Qty <input type="number" data-stock="qty" value="{{st.qty}}" min="0"></label>
+          <label>Restocks to <input type="number" data-stock="max" value="{{st.max}}" min="0"></label>
+          {{/unless}}
+          <label><input type="checkbox" data-stock="pooled" {{checked st.pooled}}> Rotating</label>
+          <label>Price ¥ <input type="number" data-stock="price" value="{{st.price}}" placeholder="{{basePrice}}" min="0" step="100"></label>
+          <a data-action="removeStock" title="Remove from the shop">✕</a>
+        </div>
+        {{/if}}
+      </li>
+      {{else}}
+      <li class="empty">{{#if isGM}}Nothing in stock. Drag weapons, armor or gear here, or a whole compendium folder (the Equipment compendium's Gear folder makes a quick supply shop).{{else}}Nothing for sale right now. Come back after the next restock.{{/if}}</li>
+      {{/each}}
+    </ol>
+
+    {{#if canSell}}
+    <h4>Sell to this shop <span class="hint">({{system.sellRate}}% of list price)</span></h4>
+    <ol class="jjk-items">
+      {{#each sellable}}
+      <li class="jjk-item" data-sell-id="{{id}}"><img src="{{img}}" alt=""><span class="name">{{name}}{{#if isGear}} (×{{have}}){{/if}}</span>
+        <span class="jjk-price">{{price}}{{#if isGear}} each{{/if}}</span>
+        {{#if isGear}}<input type="number" class="qty jjk-live" value="1" min="1" max="{{have}}">{{/if}}
+        <a class="jjk-buy" data-action="sell">Sell</a></li>
+      {{else}}
+      <li class="empty">Nothing this shop would pay for.</li>
+      {{/each}}
+    </ol>
+    {{/if}}
+
+    {{#if isGM}}
+    <h4>Clock</h4>
+    <div class="jjk-row jjk-clock">
+      <span>{{clock.now}}</span>
+      <a data-action="advance" data-span="hour">+1 hour</a>
+      <a data-action="advance" data-span="eight">+8 hours</a>
+      <a data-action="advance" data-span="day">+1 day</a>
+      <a data-action="advance" data-span="week">+1 week</a>
+      <a data-action="restock">Restock now</a>
+      <a data-action="payMission">Pay the party…</a>
+    </div>
+    <p class="hint">Advancing time moves the world clock for every shop. A shop restocks when its restock period has passed; players can search for suppliers once per in-world day.</p>
+
+    <h4>Shop settings (GM)</h4>
+    <div class="jjk-grid">
+      <label>Price markup % <input type="number" name="system.markup" value="{{system.markup}}" min="0"></label>
+      <label>Buys items at % <input type="number" name="system.sellRate" value="{{system.sellRate}}" min="0" max="100"></label>
+      <label>Restock every (days, 0 = never) <input type="number" name="system.restockDays" value="{{system.restockDays}}" min="0"></label>
+      <label>Rotating items out per restock (0 = all) <input type="number" name="system.rotate" value="{{system.rotate}}" min="0"></label>
+    </div>
+    {{#if (jjk-eq system.kind "basic")}}
+    <p>{{#if openToAll}}Open to every player.{{else}}Hidden from players.{{/if}} <a data-action="toggleOpen">{{#if openToAll}}Close it{{else}}Open it to all players{{/if}}</a></p>
+    {{else}}
+    <div class="jjk-grid">
+      <label>Search DC <input type="number" name="system.search.dc" value="{{system.search.dc}}" min="0"></label>
+      <label>Found from Grade <select name="system.search.minGrade">{{selectOptions gradeOptions selected=system.search.minGrade}}</select></label>
+      <label class="wide">Skills that can find it (blank = any) <input type="text" name="system.search.skills" value="{{system.search.skills}}" placeholder="society, thievery, occultism"></label>
+      <label class="wide">What the finder learns <input type="text" name="system.search.hint" value="{{system.search.hint}}" placeholder="Ask for Old Man Tsuda; say Kaito sent you."></label>
+    </div>
+    <p>Found by: {{#if discoveredBy.length}}{{#each discoveredBy}}{{this}}{{#unless @last}}, {{/unless}}{{/each}} <a data-action="forget">Hide again</a>{{else}}<em>nobody yet</em>{{/if}}{{#if openToAll}} · Open to everyone{{/if}} · <a data-action="toggleOpen">{{#if openToAll}}Hide from everyone{{else}}Reveal to everyone{{/if}}</a></p>
+    {{/if}}
+
+    <h4>Description <span class="hint">(players see this)</span></h4>
+    <prose-mirror name="system.description" value="{{source.description}}" toggled>{{{enrichedDescription}}}</prose-mirror>
+    <h4>GM notes</h4>
+    <prose-mirror name="system.gmNotes" value="{{source.gmNotes}}" toggled>{{{enrichedNotes}}}</prose-mirror>
+    {{/if}}
+  </section>
+</div>

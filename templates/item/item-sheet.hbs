@@ -29,6 +29,21 @@
       <label class="jjk-check"><input type="checkbox" name="system.isDomain" {{checked system.isDomain}}> Domain Expansion</label>
       <label>Pressure <input type="number" name="system.pressure" value="{{system.pressure}}" min="0" max="10"></label>
     </div>
+    {{#if system.isDomain}}
+    <h4>Domain automation <span class="hint">(read from the card; fix anything it got wrong)</span></h4>
+    <div class="jjk-grid">
+      <label>Radius (ft) <input type="number" name="system.domain.radius" value="{{system.domain.radius}}" min="5" step="5"></label>
+      <label>Sure-hit damage <input type="text" name="system.domain.damage" value="{{system.domain.damage}}" placeholder="output, 8d6, or blank"></label>
+      <label>Damage type <input type="text" name="system.domain.damageType" value="{{system.domain.damageType}}" placeholder="force"></label>
+      <label>Amplify inside <select name="system.domain.amplify">{{selectOptions domainAmplifyOptions selected=system.domain.amplify}}</select></label>
+      <label class="wide">Conditions each pulse <input type="text" name="system.domain.conditions" value="{{system.domain.conditions}}" placeholder="stunned 1, off-guard, slowed 1"></label>
+      <label class="wide">Other effect (shown in chat) <input type="text" name="system.domain.effect" value="{{system.domain.effect}}"></label>
+      <label>Extra rounds (blank = by Grade) <input type="number" name="system.domain.rounds" value="{{system.domain.rounds}}" min="0"></label>
+      <label>Barrier Hardness (blank = Reinf. ×2) <input type="number" name="system.domain.hardness" value="{{system.domain.hardness}}" min="0"></label>
+      <label>Barrier HP (blank = max CE ×3) <input type="number" name="system.domain.barrierHP" value="{{system.domain.barrierHP}}" min="1"></label>
+    </div>
+    <p class="hint">"output" means Grade Rank × your technique die + key mod. Special Grade casters get a 30-ft radius and 2 extra rounds automatically.</p>
+    {{/if}}
     {{/if}}
 
     {{#if isType.weapon}}
@@ -43,7 +58,7 @@
       <label class="jjk-check"><input type="checkbox" name="system.cursedTool" {{checked system.cursedTool}}> Cursed tool</label>
       <label>Stored charge <input type="number" name="system.charge" value="{{system.charge}}" min="0"></label>
       <label>Bulk <input type="text" name="system.bulk" value="{{system.bulk}}"></label>
-      <label>Price <input type="text" name="system.price" value="{{system.price}}"></label>
+      <label>Price (¥) <input type="number" name="system.yen" value="{{system.yen}}" min="0" step="100"></label>
     </div>
     {{/if}}
 
@@ -58,7 +73,7 @@
       <label class="jjk-check"><input type="checkbox" name="system.equipped" {{checked system.equipped}}> Worn</label>
       <label class="wide">Traits <input type="text" name="system.traits" value="{{system.traits}}"></label>
       <label>Bulk <input type="text" name="system.bulk" value="{{system.bulk}}"></label>
-      <label>Price <input type="text" name="system.price" value="{{system.price}}"></label>
+      <label>Price (¥) <input type="number" name="system.yen" value="{{system.yen}}" min="0" step="100"></label>
     </div>
     {{/if}}
 
@@ -66,7 +81,7 @@
     <div class="jjk-grid">
       <label>Quantity <input type="number" name="system.quantity" value="{{system.quantity}}"></label>
       <label>Bulk <input type="text" name="system.bulk" value="{{system.bulk}}"></label>
-      <label>Price <input type="text" name="system.price" value="{{system.price}}"></label>
+      <label>Price (¥) <input type="number" name="system.yen" value="{{system.yen}}" min="0" step="100"></label>
       <label class="wide">Traits <input type="text" name="system.traits" value="{{system.traits}}"></label>
     </div>
     {{/if}}

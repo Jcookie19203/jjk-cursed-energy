@@ -18,7 +18,8 @@ To install by hand instead, download `jjk-cursed-energy.zip` from the latest rel
 - **Sorcerer** — every number comes from the Grade Table: CE pool, HP, Reinforcement, Cursed Attack and Technique DC bands, saves, Perception, AC, technique die and Reinforced Strike dice.
   - The Cursed Attack / Technique DC band climbs **+1 for each card you hold in your current tier**. The sheet shows **Promote ▲** once you have all three.
   - It also tracks composure, Takeover Pressure (for vessels), Domain state, Hero Points, skills with proficiency ranks, and every condition.
-- **Curse / NPC** — a stat block: AC, saves, Perception, HP, CE, Reinforcement, Cursed Attack, Technique DC, IWR, Strikes and abilities.
+- **Curse / NPC** — a stat block: AC, saves, Perception, HP, CE, Reinforcement, Cursed Attack, Technique DC, IWR, Strikes, abilities and its Domain.
+- **Shop / Supplier** — a shop window: stock with prices and quantities, Buy and Sell, restocking on the world clock. *Basic* shops are open to everyone; *rare* suppliers stay hidden until a player finds one with a search roll.
 
 **Item types:** Ability Card (technique and path cards), Weapon / Cursed Tool, Armor, Gear, Binding Vow, Ancestry, Background.
 
@@ -29,12 +30,13 @@ To install by hand instead, download `jjk-cursed-energy.zip` from the latest rel
 - Damage cards include **Apply / Half / Double / Heal**, and offer **Reinforcement** (spend 1 CE to reduce the damage).
 - **Black Flash** prompt on every critical attack: a flat check of DC 8 − composure. On a success it refunds CE equal to your Grade Rank and adds composure.
 - **Steady Flow** (+1 CE at the start of each turn) and **takeover save** prompts at Pressure 5+. Both can be turned off in Settings.
-- **Domains:** opening one spends the whole pool and needs at least half of it; ending one leaves you fatigued at 0 CE.
+- **Domains (automated):** opening one spends the whole pool (minimum half), draws the barrier on the map and lands the sure hit on every enemy inside, on the slam and at the start of each of the caster's turns. It handles incapacitation (higher Grade: half damage, conditions −1), Simple Domain and Domain Amplification, Domain Clash, damaging the barrier, amplified costs inside, and the collapse (fatigued at 0 CE). Every Domain card and curse ships with its sure-hit filled in. Can be turned off in Settings.
+- **Money & shops:** a yen wallet on every sorcerer, mission pay by Grade, Buy/Sell in shop windows, a restock clock with time-advance buttons, and once-a-day supplier searches. Purchases run through the GM's client, so a GM must be logged in.
 - Drag a card from a sheet to the hotbar to make a macro.
 
 **Compendiums**
 - *Visible to players:* the Rules (Cursed Energy), PF2e Core summary, Ancestries, Backgrounds, Equipment, Player Primers and Curse Field Notes (a stat-free player brief for every curse).
-- *GM only:* Cursed Techniques (64 techniques × 21 cards), Cursed Paths, GM Master Sheets, GM Guide, Curses & Rival Sorcerers (110 ready-to-run actors, canon and original, foldered by Grade) and Cursed Tools (104 tools and cursed objects, foldered by Grade, ready to drag onto a sheet).
+- *GM only:* Cursed Techniques (64 techniques × 21 cards), Cursed Paths, GM Master Sheets, GM Guide, Curses & Rival Sorcerers (110 ready-to-run actors, canon and original, foldered by Grade) Cursed Tools (104 tools and cursed objects, foldered by Grade, priced in yen, ready to drag onto a sheet) and Shops & Suppliers (a basic supply shop and four rare suppliers, Grade 4 to Grade 1).
 
 ## How to run a technique at the table
 1. The player makes a Sorcerer and picks a technique.

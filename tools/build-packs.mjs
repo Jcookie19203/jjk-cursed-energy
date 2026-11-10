@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { marked } from "marked";
 import { compilePack } from "@foundryvtt/foundryvtt-cli";
 import * as CORE from "../content/core-items.mjs";
+import { parseDomain, curseDomain } from "./domain-parse.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SUPP = path.resolve(ROOT, "..", "JJK Cursed Energy Supplement (PF2e)");
@@ -18,6 +19,12 @@ const STATS = { coreVersion: "14.370", systemId: SYSTEM_ID, systemVersion: "0.1.
 const TIER = { "Fledgling": "fledgling", "Grade 4": "grade4", "Grade 3": "grade3", "Grade 2": "grade2", "Semi-Grade 1": "semi1", "Grade 1": "grade1", "Special Grade": "special" };
 const GRADE_BY_LABEL = { ...TIER, "Grade 1 ": "grade1" };
 const GRADE_DC = { fledgling: 17, grade4: 20, grade3: 23, grade2: 27, semi1: 30, grade1: 34, special: 38 };
+// Prices (keep in step with TOOL_PRICE / parsePrice in module/config.mjs).
+const TOOL_YEN = { fledgling: 50000, grade4: 100000, grade3: 400000, grade2: 1500000, semi1: 5000000, grade1: 15000000, special: 100000000 };
+function yenOf(text) {
+  const m = String(text ?? "").toLowerCase().replace(/[,\s]/g, "").match(/^(\d+(?:\.\d+)?)(cp|sp|gp)?$/);
+  return m ? Math.round(Number(m[1]) * ({ cp: 100, sp: 1000, gp: 10000 }[m[2]] ?? 1)) : 0;
+}
 const GRADE_ATK = { fledgling: 7, grade4: 11, grade3: 15, grade2: 19, semi1: 23, grade1: 27, special: 31 };
 
 /* ---------------- helpers ---------------- */
@@ -125,6 +132,7 @@ function parseCard(file, md, technique, ladder) {
       resolution, save, basicSave: !!(saveM && saveM[1]),
       usesOutput: /output damage/i.test(body),
       isDomain: /Domain Expansion/.test(path.basename(file)) && universal,
+      ...(/Domain Expansion/.test(path.basename(file)) && universal ? { domain: parseDomain(body) } : {}),
       pressure: pressureM ? Math.min(10, Number(pressureM[1])) : 0,
       description: toHTML(body)
     }
@@ -199,6 +207,7 @@ function parseCurse(file, md) {
       cursedAttack: { base: melee ? Number(melee[2]) : GRADE_ATK[grade] },
       techniqueDC: { base: dcs.length ? Math.max(...dcs.filter(d => d >= 10 && d <= 50)) : GRADE_DC[grade] },
       keyMod: 4,
+      ...curseDomain(md),
       immunities: field(/\*\*Immunities\*\*\s*([^\n*;]+)/), weaknesses: field(/\*\*Weakness(?:es)?\*\*\s*([^\n*;]+)/),
       resistances: field(/\*\*Resistances?\*\*\s*([^\n*;]+)/), languages: field(/\*\*Languages\*\*\s*([^\n*;]+)/),
       description: toHTML(md), conditions: {}
@@ -231,7 +240,9 @@ journalDoc("rules", "Bestiary Overview", toHTML(read(path.join(SUPP, "04 - Curse
 
 // GM guide.
 s = 0;
-for (const f of mdFiles(path.join(SUPP, "05 - GM Guide"))) journalDoc("gm-guide", stripH1(read(path.join(SUPP, "05 - GM Guide", f))).title || f, toHTML(read(path.join(SUPP, "05 - GM Guide", f))), { sort: s++, seed: f });
+// Held back from Foundry until the GM wants it there (it's still in the supplement folder).
+const HELD_BACK = [/Campaign Outline/];
+for (const f of mdFiles(path.join(SUPP, "05 - GM Guide")).filter(f => !HELD_BACK.some(r => r.test(f)))) journalDoc("gm-guide", stripH1(read(path.join(SUPP, "05 - GM Guide", f))).title || f, toHTML(read(path.join(SUPP, "05 - GM Guide", f))), { sort: s++, seed: f });
 
 // PF2e core summary.
 s = 0;
@@ -267,6 +278,7 @@ for (const f of mdFiles(toolDir)) {
   const md = read(path.join(toolDir, f));
   const { title, body } = stripH1(md);
   const grade = gradeOfFile(f);
+  const yen = TOOL_YEN[TIER[grade]] ?? 0;
   const weapon = md.match(/^\*\*Weapon:\*\*\s*(d4|d6|d8|d10|d12)\s+([A-Za-z-]+)\s*·\s*([^·\n]+?)\s*·\s*([^\n]*)$/m);
   const object = md.match(/^\*\*Object:\*\*\s*([^\n]+)$/m);
   const description = toHTML(body);
@@ -274,10 +286,10 @@ for (const f of mdFiles(toolDir)) {
   if (weapon) {
     const traits = weapon[4].replace(/\.$/, "").trim();
     itemDoc("cursed-tools", { name, type: "weapon", img: "icons/svg/lightning.svg", folder: toolFolders[grade], seed: f,
-      system: { attackOverride: null, formula: "", charge: 0, bonus: 0, equipped: false, quantity: 1, bulk: "1", price: "", dieSize: weapon[1], damageType: weapon[2].toLowerCase(), range: weapon[3].trim(), traits: /cursed tool/i.test(traits) ? traits : `${traits}, cursed tool`, cursedTool: true, description } });
+      system: { attackOverride: null, formula: "", charge: 0, bonus: 0, equipped: false, quantity: 1, bulk: "1", price: "", yen, dieSize: weapon[1], damageType: weapon[2].toLowerCase(), range: weapon[3].trim(), traits: /cursed tool/i.test(traits) ? traits : `${traits}, cursed tool`, cursedTool: true, description } });
   } else if (object) {
     itemDoc("cursed-tools", { name, type: "gear", img: "icons/svg/chest.svg", folder: toolFolders[grade], seed: f,
-      system: { quantity: 1, traits: "cursed object", bulk: "L", price: "", description } });
+      system: { quantity: 1, traits: "cursed object", bulk: "L", price: "", yen, description } });
   } else toolProblems.push(f);
 }
 if (toolProblems.length) console.warn(`Cursed tools with no **Weapon:**/**Object:** line (skipped): ${toolProblems.join(", ")}`);
@@ -290,10 +302,77 @@ const eqTools = folderDoc("equipment", "Cursed Tools", "Item", 1);
 const eqArmor = folderDoc("equipment", "Armor", "Item", 2);
 const eqGear = folderDoc("equipment", "Gear", "Item", 3);
 const wBase = { attackOverride: null, formula: "", cursedTool: false, charge: 0, bonus: 0, equipped: true, quantity: 1, bulk: "1", price: "" };
-for (const w of CORE.WEAPONS) itemDoc("equipment", { name: w.name, type: "weapon", img: "icons/svg/sword.svg", folder: eqWeapons, system: { ...wBase, ...w } });
+for (const w of CORE.WEAPONS) itemDoc("equipment", { name: w.name, type: "weapon", img: "icons/svg/sword.svg", folder: eqWeapons, system: { ...wBase, ...w, yen: yenOf(w.price) } });
 for (const w of CORE.CURSED_TOOLS) itemDoc("equipment", { name: w.name, type: "weapon", img: "icons/svg/lightning.svg", folder: eqTools, system: { ...wBase, ...w } });
 for (const a of CORE.ARMOR) itemDoc("equipment", { name: a.name, type: "armor", img: "icons/svg/shield.svg", folder: eqArmor, system: { traits: "", equipped: false, bulk: "1", price: "", ...a } });
-for (const g of CORE.GEAR) itemDoc("equipment", { name: g.name, type: "gear", img: "icons/svg/item-bag.svg", folder: eqGear, system: { quantity: 1, traits: "", ...g } });
+for (const g of CORE.GEAR) itemDoc("equipment", { name: g.name, type: "gear", img: "icons/svg/item-bag.svg", folder: eqGear, system: { quantity: 1, traits: "", ...g, yen: yenOf(g.price) } });
+
+/* ---------------- shops (GM-only Actor pack) ---------------- */
+
+function shopActor({ name, img = "icons/svg/coins.svg", system, stock, ownership = 0 }) {
+  const _id = makeId(`shops:actor:${name}`);
+  const items = stock.map(({ doc, st }) => {
+    const iid = makeId(`shops:item:${name}:${doc.name}`);
+    const { _key, folder, ...rest } = doc;
+    return { ...structuredClone(rest), _id: iid, _key: `!actors.items!${_id}.${iid}`, folder: null, sort: 0, ownership: { default: 0 },
+      flags: { [SYSTEM_ID]: { stock: { unlimited: false, qty: 1, max: 1, pooled: false, shown: true, price: null, ...st } } } };
+  });
+  const base = { kind: "basic", location: "", markup: 100, sellRate: 50, restockDays: 7, lastRestock: null, rotate: 0,
+    search: { dc: 20, skills: "society, thievery, occultism", minGrade: "fledgling", hint: "" }, description: "", gmNotes: "" };
+  emit("shops", { _id, _key: `!actors!${_id}`, name, type: "shop", img, system: { ...base, ...system, search: { ...base.search, ...(system.search ?? {}) } },
+    items, effects: [], folder: null, sort: 0,
+    prototypeToken: { name, actorLink: true, disposition: 0, displayBars: 0 },
+    ownership: { default: ownership }, flags: {}, _stats: STATS });
+}
+const docsIn = (pack, pred = () => true) => out[pack].filter(d => d._key.startsWith("!items!") && pred(d));
+const toolsOf = (...grades) => docsIn("cursed-tools", d => grades.some(g => d.folder === toolFolders[g]));
+const para = s => marked.parse(s, { mangle: false, headerIds: false });
+const pooled = docs => docs.map(doc => ({ doc, st: { pooled: true, qty: 1, max: 1 } }));
+
+shopActor({
+  name: "Annex Supply Office",
+  ownership: 2,
+  system: { kind: "basic", location: "Ground floor of the school, next to the infirmary", markup: 100, sellRate: 50, restockDays: 7,
+    description: para("The school's supply office. Uniforms, field kits, curtain talismans and standard-issue weapons, at cost. The clerk also buys back gear you don't need, at half price."),
+    gmNotes: para("Basic supplies, always open. Everything except the issue cursed knives is always in stock; the knives restock weekly.") },
+  stock: [
+    ...docsIn("equipment", d => d.type !== "weapon" || (!d.system.cursedTool && d.system.yen > 0)).map(doc => ({ doc, st: { unlimited: true, qty: 0, max: 0 } })),
+    ...docsIn("equipment", d => d.name === "Grade 4 Cursed Knife").map(doc => ({ doc, st: { qty: 2, max: 2 } }))
+  ]
+});
+shopActor({
+  name: "Tsuda's Pawn & Curio",
+  system: { kind: "rare", location: "A shuttered pawn shop under the railway arches", markup: 120, sellRate: 40, restockDays: 7, rotate: 4,
+    search: { dc: 18, skills: "society, thievery, diplomacy", minGrade: "fledgling", hint: "Knock twice on the shutter and ask Old Man Tsuda for 'the back room'. He deals in Grade 4 tools that walked out of school storerooms." },
+    description: para("Dusty glass cases of watches and pachinko balls out front. In the back, a rack of school-issue blades and talismans nobody admits are missing."),
+    gmNotes: para("Grade 4 cursed tools, four out each week. Old Man Tsuda is a retired window (a non-sorcerer support agent) and knows everyone in the ward. He's a good rumour source.") },
+  stock: pooled(toolsOf("Grade 4"))
+});
+shopActor({
+  name: "The Night Market",
+  system: { kind: "rare", location: "A car park that's only there between 1 and 4 a.m.", markup: 130, sellRate: 40, restockDays: 7, rotate: 4,
+    search: { dc: 25, skills: "thievery, deception, intimidation, occultism", minGrade: "grade3", hint: "Follow the paper lanterns only sorcerers can see. Pay the toll at the gate in cursed energy, not money." },
+    description: para("A pop-up market of curse users, smugglers and sorcerers who'd rather not be recognised. No names, no refunds."),
+    gmNotes: para("Grade 3 tools, four out each week. On a critical failure finding it, the party was followed here. A good place for the Sowers or Ravel to show up.") },
+  stock: pooled(toolsOf("Grade 3"))
+});
+shopActor({
+  name: "Clan Storehouse",
+  system: { kind: "rare", location: "Behind the main house of an old sorcerer clan, Kyoto", markup: 100, sellRate: 0, restockDays: 14, rotate: 3,
+    search: { dc: 30, skills: "society, diplomacy, religion", minGrade: "grade2", hint: "The clan sells to outsiders who come recommended. Bring a letter of introduction, and don't mention money until they do." },
+    description: para("A storehouse of heirlooms a great clan is quietly selling off to pay its debts. They'll sell to you; they won't buy from you."),
+    gmNotes: para("Grade 2 tools, three out every two weeks. A natural place to hang a favour or a Binding Vow on a sale.") },
+  stock: pooled(toolsOf("Grade 2"))
+});
+shopActor({
+  name: "The Broker of Severed Things",
+  system: { kind: "rare", location: "Wherever the Broker's crows lead you", markup: 150, sellRate: 60, restockDays: 14, rotate: 2,
+    search: { dc: 36, skills: "occultism, thievery, deception", minGrade: "semi1", hint: "Leave a severed finger of something you've exorcised at a crossroads at midnight. If the Broker is interested, a crow comes back with an address." },
+    description: para("A soft-spoken curse user who trades in the tools of dead sorcerers. Every blade on the wall has a name and a grave."),
+    gmNotes: para("Semi-Grade 1 and Grade 1 tools, two out every two weeks. Special Grade tools are never for sale; they're story rewards (GM Guide III). The Broker may ask for a favour instead of yen.") },
+  stock: pooled(toolsOf("Semi-Grade 1", "Grade 1"))
+});
+
 
 /* ---------------- write + compile ---------------- */
 

@@ -131,3 +131,24 @@
 .jjk-chat.jjk-pressure { border-left: 4px solid #a3242c; padding-left: 6px; }
 .jjk-chat.jjk-promote h3 { color: #b8860b; }
 .jjk-dialog .form-group { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 4px 0; }
+
+/* ---------- money & shops ---------- */
+.jjk .jjk-money, .jjk .jjk-shops, .jjk .jjk-shop-buyer, .jjk .jjk-clock { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 8px; }
+.jjk .jjk-money input { width: 9em; }
+.jjk .jjk-shops a, .jjk .jjk-clock a, .jjk .jjk-money a { color: var(--jjk-accent); border: 1px solid var(--jjk-line); border-radius: 4px; padding: 1px 6px; }
+.jjk .jjk-shops a.rare { border-color: var(--jjk-accent); font-style: italic; }
+.jjk .jjk-shop-buyer { padding: 4px 8px; border: 1px solid var(--jjk-line); border-radius: 4px; }
+.jjk .jjk-shop-buyer .jjk-wallet { margin-left: auto; }
+.jjk .jjk-stock .jjk-item { flex-direction: column; align-items: stretch; }
+.jjk .jjk-stock-line { display: flex; gap: 6px; align-items: center; }
+.jjk .jjk-stock-line .name { flex: 1; font-weight: 600; }
+.jjk .jjk-price { font-weight: 700; min-width: 6.5em; text-align: right; }
+.jjk .jjk-item input.qty { width: 3.5em; }
+.jjk .jjk-buy { background: var(--jjk-accent); color: #fff !important; padding: 1px 10px; border-radius: 4px; font-weight: 600; }
+.jjk .jjk-buy.poor { opacity: 0.5; }
+.jjk .jjk-stock .soldout .name, .jjk .jjk-stock .soldout .jjk-price { opacity: 0.5; text-decoration: line-through; }
+.jjk .jjk-stock .offcycle { opacity: 0.6; }
+.jjk .jjk-stock-gm { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.8em; padding: 2px 0 2px 34px; }
+.jjk .jjk-stock-gm input[type="number"] { width: 5.5em; }
+.jjk .jjk-shop-desc { margin-bottom: 8px; }
+.jjk-chat.jjk-shop-msg ul { margin: 4px 0; padding-left: 18px; }

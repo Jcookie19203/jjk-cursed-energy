@@ -1,4 +1,6 @@
-import { SYSTEM_ID, GRADES, GRADE_ORDER, ABILITIES, SAVES, SKILLS, PROFICIENCY, VALUED_CONDITIONS, TOGGLE_CONDITIONS, ACTION_GLYPH } from "../config.mjs";
+import { SYSTEM_ID, GRADES, GRADE_ORDER, ABILITIES, SAVES, SKILLS, PROFICIENCY, VALUED_CONDITIONS, TOGGLE_CONDITIONS, ACTION_GLYPH, formatYen } from "../config.mjs";
+import { DOMAIN_AMPLIFY } from "./item-sheet.mjs";
+import { startSearch, searchCooldown, formatSpan, payMission } from "../shop.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -63,7 +65,11 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       jjkTab: JJKBaseActorSheet.#tab,
       cardToggle: JJKBaseActorSheet.#cardToggle,
       trackCard: JJKBaseActorSheet.#trackCard,
-      openCompendiumDoc: JJKBaseActorSheet.#openCompendiumDoc
+      openCompendiumDoc: JJKBaseActorSheet.#openCompendiumDoc,
+      searchSupplier: JJKBaseActorSheet.#searchSupplier,
+      domainPulse: JJKBaseActorSheet.#domainPulse,
+      payActor: JJKBaseActorSheet.#payActor,
+      openShop: JJKBaseActorSheet.#openShop
     }
   };
 
@@ -95,6 +101,11 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     doc?.sheet.render(true);
   }
 
+  static #searchSupplier() { startSearch(this.document); }
+  static #domainPulse() { game.jjk.domain.pulseNow(this.document); }
+  static #payActor() { payMission([this.document]); }
+  static #openShop(event, target) { game.actors.get(target.dataset.shopId)?.sheet.render(true); }
+
   static #tab(event, target) {
     this.tabGroups[target.dataset.group ?? "primary"] = target.dataset.tab;
     this.render();
@@ -107,6 +118,11 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     super._onFirstRender?.(context, options);
     this.element.addEventListener("dragover", ev => ev.preventDefault());
     this.element.addEventListener("drop", ev => this.#onDropItem(ev), { capture: true });
+    // Domain counters live in flags (not form fields).
+    this.element.addEventListener("change", ev => {
+      const key = ev.target.closest?.("input.jjk-counter")?.dataset.counter;
+      if (key) game.jjk.domain.setCounter(this.document, key, ev.target.checked);
+    });
   }
 
   async #onDropItem(event) {
@@ -128,6 +144,10 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const actor = this.document;
     const sys = actor.system;
     context.actor = actor;
+    context.isGM = game.user.isGM;
+    context.domainState = game.jjk.domain.activeDomain(actor);
+    context.counters = actor.getFlag(SYSTEM_ID, "counters") ?? {};
+    context.domainAmplifyOptions = DOMAIN_AMPLIFY;
     context.system = sys;
     context.source = actor.system._source ?? actor._source.system;
     context.editable = this.isEditable;
@@ -227,6 +247,13 @@ export class JJKSorcererSheet extends JJKBaseActorSheet {
     context.pressurePct = sys.attributes.pressure * 10;
     context.enrichedNotes = await TextEditorImpl().enrichHTML(sys.details.notes, { relativeTo: this.document, secrets: this.document.isOwner });
     context.isGM = game.user.isGM;
+    // Money and shops (Gear tab).
+    context.wallet = formatYen(sys.yen);
+    const wait = searchCooldown(this.document);
+    context.searchWait = wait > 0 ? formatSpan(wait) : null;
+    context.knownShops = game.actors.filter(a => a.type === "shop" && a.testUserPermission(game.user, "OBSERVER"))
+      .sort((a, b) => a.system.kind.localeCompare(b.system.kind) || a.name.localeCompare(b.name))
+      .map(a => ({ id: a.id, name: a.name, rare: a.system.kind === "rare", location: a.system.location }));
     // Technique / layer-path dropdowns, built from the card compendiums (like PF2e's class picker).
     const ladders = await loadLadders();
     const names = Object.keys(ladders).sort((a, b) => a.localeCompare(b));

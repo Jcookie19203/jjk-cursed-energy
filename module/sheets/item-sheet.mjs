@@ -4,6 +4,8 @@ const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
 const TextEditorImpl = () => foundry.applications.ux.TextEditor.implementation;
 
+export const DOMAIN_AMPLIFY = { half: "Default: costs halved, die +1 step", minus1: "Costs 1 less CE", card: "Card's own rule (no automatic change)" };
+
 export class JJKItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   static DEFAULT_OPTIONS = {
     classes: ["jjk", "sheet", "item"],
@@ -27,6 +29,7 @@ export class JJKItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     context.resolutionOptions = RESOLUTION;
     context.ladderOptions = LADDERS;
     context.saveOptions = Object.fromEntries(Object.entries(SAVES).map(([k, v]) => [k, v.label]));
+    context.domainAmplifyOptions = DOMAIN_AMPLIFY;
     context.dieOptions = { d4: "d4", d6: "d6", d8: "d8", d10: "d10", d12: "d12" };
     context.armorOptions = { unarmored: "Unarmored", light: "Light", medium: "Medium", heavy: "Heavy" };
     context.sizeOptions = { tiny: "Tiny", small: "Small", medium: "Medium", large: "Large" };

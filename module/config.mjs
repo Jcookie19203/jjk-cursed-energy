@@ -95,7 +95,7 @@ export const STATUS_ICONS = {
 };
 
 export const DEFAULT_IMG = {
-  sorcerer: "icons/svg/mystery-man.svg", curse: "icons/svg/skull.svg",
+  sorcerer: "icons/svg/mystery-man.svg", curse: "icons/svg/skull.svg", shop: "icons/svg/coins.svg",
   ability: "icons/svg/aura.svg", weapon: "icons/svg/sword.svg", gear: "icons/svg/item-bag.svg", vow: "icons/svg/book.svg"
 };
 
@@ -112,3 +112,33 @@ export function degreeOfSuccess(total, natural, dc) {
   return degree;
 }
 export const DEGREE_LABELS = ["Critical Failure", "Failure", "Success", "Critical Success"];
+
+/* ---------- money & shops ---------- */
+
+/** Suggested pay per PC for one job, by the PC's Grade (GM Guide VI). */
+export const MISSION_PAY = { fledgling: 30000, grade4: 80000, grade3: 200000, grade2: 500000, semi1: 1200000, grade1: 3000000, special: 10000000 };
+
+/** Suggested list price of a cursed tool, by the tool's Grade. */
+export const TOOL_PRICE = { fledgling: 50000, grade4: 100000, grade3: 400000, grade2: 1500000, semi1: 5000000, grade1: 15000000, special: 100000000 };
+
+/** Format a yen amount: ¥1,234,000. */
+export const formatYen = n => `¥${Math.round(Number(n) || 0).toLocaleString("en-US")}`;
+
+/** Read an old free-text price ("2 gp", "5 sp", "¥3,000", "3000") as yen. 1 cp = ¥100, 1 sp = ¥1,000, 1 gp = ¥10,000. */
+export function parsePrice(text) {
+  const s = String(text ?? "").toLowerCase().replace(/[,¥\s]/g, "");
+  const m = s.match(/^(\d+(?:\.\d+)?)(cp|sp|gp|pp|yen)?$/);
+  if (!m) return 0;
+  const rate = { cp: 100, sp: 1000, gp: 10000, pp: 100000 }[m[2]] ?? 1;
+  return Math.round(Number(m[1]) * rate);
+}
+
+/** Seconds in one in-world day, from the world calendar if it defines one. */
+export function secondsPerDay() {
+  try {
+    const d = game.time.calendar?.days;
+    const n = d ? d.hoursPerDay * d.minutesPerHour * d.secondsPerMinute : 0;
+    if (Number.isFinite(n) && n > 0) return n;
+  } catch {}
+  return 86400;
+}

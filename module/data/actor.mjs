@@ -1,4 +1,5 @@
 import { GRADES, SAVES, SKILLS, ABILITIES, VALUED_CONDITIONS, TOGGLE_CONDITIONS, profBonus } from "../config.mjs";
+import { domainSchema } from "./item.mjs";
 
 const { NumberField, StringField, BooleanField, SchemaField, HTMLField } = foundry.data.fields;
 
@@ -59,6 +60,7 @@ export class SorcererData extends foundry.abstract.TypeDataModel {
       techniqueName: str(""),
       pathName: str(""),
       hasPassenger: bool(false),
+      yen: int(0, { min: 0 }),
       abilities: new SchemaField(abilities),
       skills: new SchemaField(skills),
       loreName: str("Lore"),
@@ -170,6 +172,9 @@ export class CurseData extends foundry.abstract.TypeDataModel {
       cursedAttack: new SchemaField({ base: int(13) }),
       techniqueDC: new SchemaField({ base: int(20) }),
       keyMod: int(4),
+      hasDomain: bool(false),
+      domainName: str(""),
+      domain: domainSchema(),
       immunities: str(""), weaknesses: str(""), resistances: str(""), languages: str(""),
       description: new HTMLField({ required: true, blank: true, initial: "" }),
       conditions: conditionSchema()
@@ -195,5 +200,42 @@ export class CurseData extends foundry.abstract.TypeDataModel {
     this.strike = { count: 0, die: g.die, formula: "" };
     this.attributes.hp.value = Math.min(this.attributes.hp.value, this.attributes.hp.max);
     this.attributes.ce.value = Math.min(this.attributes.ce.value, this.attributes.ce.max);
+  }
+}
+
+/* -------------------------------------------- */
+/*  Shop                                        */
+/* -------------------------------------------- */
+
+/**
+ * A shop or supplier. Its stock is its embedded items; per-item stock lives in flags.jjk-cursed-energy.stock
+ * ({ unlimited, qty, max, pooled, shown, price }). Basic shops are open to everyone; rare shops are hidden
+ * until a player finds them with a search roll (which grants that player Observer on the shop).
+ */
+export class ShopData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    return {
+      kind: str("basic", { choices: ["basic", "rare"], blank: false }),
+      location: str(""),
+      markup: int(100, { min: 0 }),
+      sellRate: int(50, { min: 0, max: 100 }),
+      restockDays: int(7, { min: 0 }),
+      lastRestock: new NumberField({ required: false, nullable: true, initial: null }),
+      rotate: int(0, { min: 0 }),
+      search: new SchemaField({
+        dc: int(20, { min: 0 }),
+        skills: str("society, thievery, occultism"),
+        minGrade: str("fledgling", { choices: Object.keys(GRADES), blank: false }),
+        hint: str("")
+      }),
+      description: new HTMLField({ required: true, blank: true, initial: "" }),
+      gmNotes: new HTMLField({ required: true, blank: true, initial: "" })
+    };
+  }
+
+  /** Skill keys allowed for the search roll (empty = any). */
+  get searchSkills() {
+    return this.search.skills.toLowerCase().split(",").map(s => s.trim()).filter(Boolean)
+      .map(s => Object.keys(SKILLS).find(k => k === s || SKILLS[k].label.toLowerCase() === s)).filter(Boolean);
   }
 }

@@ -18,7 +18,19 @@ export class JJKActor extends Actor {
         this.updateSource({ "system.attributes.hp.value": g.hp + s.details.ancestryHP + s.attributes.hp.bonus });
       }
     }
+    else if (this.type === "shop") {
+      // Basic shops open to every player; rare shops stay hidden until someone finds them.
+      const L = CONST.DOCUMENT_OWNERSHIP_LEVELS;
+      const open = (this.system.kind ?? "basic") === "basic" && data.ownership?.default === undefined;
+      this.updateSource({ "prototypeToken.disposition": 0, "prototypeToken.actorLink": true, "system.lastRestock": game.time.worldTime, ...(open ? { "ownership.default": L.OBSERVER } : {}) });
+    }
     else this.updateSource({ "prototypeToken.disposition": -1 });
+  }
+
+  /** A new rare shop starts with this cycle's rotating stock already picked. */
+  _onCreate(data, options, userId) {
+    super._onCreate(data, options, userId);
+    if (this.type === "shop" && userId === game.user.id && this.system.rotate > 0) game.jjk.shop.restockShop(this, { announce: false });
   }
 
   /* ---------- modifiers ---------- */
@@ -50,7 +62,7 @@ export class JJKActor extends Actor {
   async rollOutputDamage(label = "Output Damage", { defaultCE = 1, damageType = "" } = {}) {
     const o = await promptDamage({ title: label, defaultCE });
     if (!o) return;
-    return rollDamage({ actor: this, label, dice: o.ce + o.extra, die: this.system.techniqueDie, mod: this.system.keyMod, crit: o.crit, blackFlash: o.bf, damageType });
+    return rollDamage({ actor: this, label, dice: o.ce + o.extra, die: game.jjk.domain.amplifiedDie(this), mod: this.system.keyMod, crit: o.crit, blackFlash: o.bf, damageType });
   }
 
   /** Reinforced Strike damage (Grade dice + key mod), optionally with a weapon's die size and stored charge. */
@@ -184,7 +196,18 @@ export class JJKActor extends Actor {
     });
   }
 
-  async openDomain() {
+  /** Open a Domain: automated by module/domain.mjs unless the GM turned that off. */
+  async openDomain(item = null) {
+    if (game.settings.get(SYSTEM_ID, "domainAutomation")) return game.jjk.domain.openDomain(this, item);
+    return this.openDomainManual();
+  }
+
+  async endDomain() {
+    if (game.jjk.domain.activeDomain(this)) return game.jjk.domain.collapseDomain(this);
+    return this.endDomainManual();
+  }
+
+  async openDomainManual() {
     const ce = this.system.attributes.ce;
     if (ce.value < Math.ceil(ce.max / 2)) return ui.notifications.warn(`Opening a Domain needs at least half your CE pool (${Math.ceil(ce.max / 2)}).`);
     await this.update({ "system.attributes.ce.value": 0, "system.attributes.domainActive": true });
@@ -196,7 +219,7 @@ export class JJKActor extends Actor {
     });
   }
 
-  async endDomain() {
+  async endDomainManual() {
     await this.update({ "system.attributes.domainActive": false, "system.attributes.ce.value": 0, "system.conditions.fatigued": true, [`flags.${SYSTEM_ID}.burnedOut`]: true });
     ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), content: `<div class="jjk-chat"><strong>Domain collapses.</strong> ${this.name} is fatigued at 0 CE until they Reset.</div>` });
   }

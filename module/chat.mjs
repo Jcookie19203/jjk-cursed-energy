@@ -16,6 +16,16 @@ async function onAction(event, message) {
   const actor = flags.actorUuid ? await fromUuid(flags.actorUuid) : null;
   const item = flags.itemUuid ? await fromUuid(flags.itemUuid) : null;
 
+  // Domain buttons anyone can press (the GM's client checks and applies them).
+  const domain = game.jjk.domain;
+  switch (action) {
+    case "domainBarrier": return actor && domain.hitBarrier(actor);
+    case "domainReinforce": {
+      const doc = await fromUuid(button.dataset.targetUuid);
+      return domain.reinforceAfter(doc?.actor ?? doc, Number(button.dataset.amount), message.id);
+    }
+  }
+
   // Actions that act on whoever clicked (saves, applying damage) don't need to own the source actor.
   switch (action) {
     case "requestSave": {
@@ -53,9 +63,13 @@ async function onAction(event, message) {
   switch (action) {
     case "payCE": {
       const n = Number(button.dataset.ce);
-      return actor.spendCE(n < 0 ? actor.system.attributes.ce.value : n, { reason: item?.name });
+      if (n < 0) return actor.spendCE(actor.system.attributes.ce.value, { reason: item?.name });
+      const cost = domain.amplifiedCost(actor, item, n);
+      if (cost !== n) ui.notifications.info(`Amplified inside the Domain: ${item.name} costs ${cost} CE instead of ${n}.`);
+      return actor.spendCE(cost, { reason: item?.name });
     }
-    case "openDomain": return actor.openDomain();
+    case "openDomain": return actor.openDomain(item?.type === "ability" ? item : null);
+    case "domainEnd": return actor.endDomain();
     case "attack": {
       if (item?.type === "weapon") {
         const ov = item.system.attackOverride;
@@ -101,7 +115,8 @@ export function registerCombatHooks() {
     if (game.settings.get(SYSTEM_ID, "steadyFlow")) {
       const ce = actor.system.attributes?.ce;
       // After a Domain the pool stays at 0 until the sorcerer Resets (Core Rules IV).
-      if (ce && ce.value < ce.max && !actor.getFlag(SYSTEM_ID, "burnedOut")) await actor.update({ "system.attributes.ce.value": ce.value + 1 });
+      // …and an open Domain has already spent the pool.
+      if (ce && ce.value < ce.max && !actor.getFlag(SYSTEM_ID, "burnedOut") && !actor.system.attributes.domainActive) await actor.update({ "system.attributes.ce.value": ce.value + 1 });
     }
     if (actor.type === "sorcerer" && actor.system.hasPassenger && game.settings.get(SYSTEM_ID, "takeoverPrompts")) {
       const p = actor.system.attributes.pressure;

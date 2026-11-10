@@ -48,7 +48,7 @@ export const WEAPONS = [
   ["Spear", "d6", "piercing", "melee / thrown 20 ft", "thrown", "1 sp", "A simple polearm that can be thrown."],
   ["Bo Staff", "d8", "bludgeoning", "melee (reach)", "monk, parry, reach, trip", "2 sp", "A long staff for sweeping and blocking."],
   ["Nunchaku", "d6", "bludgeoning", "melee", "backswing, disarm, finesse, monk", "2 sp", "Two batons on a chain."],
-  ["Three-Section Staff", "d8", "bludgeoning", "melee (reach)", "backswing, reach, trip, two-hand", "", "The shape of the special-grade tool Playful Cloud, without its power."],
+  ["Three-Section Staff", "d8", "bludgeoning", "melee (reach)", "backswing, reach, trip, two-hand", "6 sp", "The shape of the special-grade tool Playful Cloud, without its power."],
   ["Chain Weapon", "d8", "slashing", "melee (reach)", "disarm, reach, trip", "3 gp", "A weighted chain, good for tangling and pulling."],
   ["Shortbow", "d6", "piercing", "ranged 60 ft", "deadly d10", "3 gp", "A compact bow."],
   ["Throwing Knives", "d4", "slashing", "thrown 20 ft", "agile, thrown", "1 sp", "Small balanced blades."]
@@ -58,7 +58,10 @@ export const CURSED_TOOLS = [
   ["Grade 4 Cursed Knife", "d4", "slashing", "melee", "agile, finesse, cursed tool", "A school-issued tool that holds a little cursed energy."],
   ["Grade 3 Cursed Staff", "d8", "bludgeoning", "melee (reach)", "reach, trip, cursed tool", "A training staff that stores a charge well."],
   ["Grade 2 Cursed Blade", "d8", "slashing", "melee", "versatile P, cursed tool", "A blade that takes a heavy charge."]
-].map(([name, dieSize, damageType, range, traits, text]) => ({ name, dieSize, damageType, range, traits, cursedTool: true, description: p(`${text} Charge it with 1 CE at a time (up to your Grade Rank) and release the charge on a hit for extra technique dice.`) }));
+].map(([name, dieSize, damageType, range, traits, text], i) => ({ name, dieSize, damageType, range, traits, cursedTool: true, yen: [100000, 400000, 1500000][i], description: p(`${text} Charge it with 1 CE at a time (up to your Grade Rank) and release the charge on a hit for extra technique dice.`) }));
+
+/** Armor prices in yen (PF2e price, at ¥10,000 per gp). */
+const ARMOR_YEN = { "School Uniform (reinforced)": 30000, "Padded Armor": 2000, "Leather Armor": 20000, "Studded Leather": 30000, "Chain Shirt": 50000, "Hide Armor": 20000, "Breastplate": 80000, "Full Plate": 300000 };
 
 export const ARMOR = [
   ["School Uniform (reinforced)", "unarmored", 0, 5, 0, 0, 0, "Jujutsu school uniforms are woven to take cursed energy. No bonus, no penalty."],
@@ -69,10 +72,10 @@ export const ARMOR = [
   ["Hide Armor", "medium", 3, 2, -2, -5, 14, "Heavy hides."],
   ["Breastplate", "medium", 4, 1, -2, -5, 16, "A solid chest plate."],
   ["Full Plate", "heavy", 6, 0, -3, -10, 18, "Head-to-toe plate."]
-].map(([name, category, acBonus, dexCap, checkPenalty, speedPenalty, strength, text]) => ({ name, category, acBonus, dexCap, checkPenalty, speedPenalty, strength: Math.floor((strength - 10) / 2), description: p(text) }));
+].map(([name, category, acBonus, dexCap, checkPenalty, speedPenalty, strength, text]) => ({ name, category, acBonus, dexCap, checkPenalty, speedPenalty, strength: Math.floor((strength - 10) / 2), yen: ARMOR_YEN[name] ?? 0, description: p(text) }));
 
 export const GEAR = [
-  ["Phone", "L", "", "Calls, maps and a flashlight. The window reports go here."],
+  ["Phone", "L", "8 gp", "Calls, maps and a flashlight. The window reports go here."],
   ["Flashlight", "L", "1 sp", "Bright light in a 60-foot cone."],
   ["First-Aid Kit", "L", "5 sp", "Lets you Administer First Aid without a penalty."],
   ["Healer's Toolkit", "1", "5 gp", "Needed to Treat Wounds."],

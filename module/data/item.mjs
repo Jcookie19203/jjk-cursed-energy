@@ -1,11 +1,37 @@
-import { GRADES, ACTIONS, RESOLUTION, LADDERS, SAVES, ABILITIES } from "../config.mjs";
+import { GRADES, ACTIONS, RESOLUTION, LADDERS, SAVES, ABILITIES, parsePrice } from "../config.mjs";
 
-const { NumberField, StringField, BooleanField, HTMLField } = foundry.data.fields;
+const { NumberField, StringField, BooleanField, HTMLField, SchemaField } = foundry.data.fields;
 const int = (initial = 0, opts = {}) => new NumberField({ required: true, nullable: false, integer: true, initial, ...opts });
 const optInt = () => new NumberField({ required: false, nullable: true, integer: true, initial: null });
 const str = (initial = "", opts = {}) => new StringField({ required: true, blank: true, initial, ...opts });
 const bool = (initial = false) => new BooleanField({ required: true, initial });
 const html = () => new HTMLField({ required: true, blank: true, initial: "" });
+
+/** Weapons, armor and gear carry a yen price. Older items had a free-text "price"; convert it once. */
+function migratePrice(source) {
+  if (source.yen === undefined && typeof source.price === "string" && source.price.trim()) source.yen = parsePrice(source.price);
+  return source;
+}
+const yen = () => int(0, { min: 0 });
+
+/**
+ * What a Domain does each pulse, read from the card or stat block by the pack builder and editable by the GM.
+ * damage: "" (none), "output" (Grade Rank × technique die + key mod) or a formula such as "8d6+4".
+ * conditions: "stunned 1, off-guard, slowed 1". rounds: extra rounds after the slam (null = by Grade).
+ */
+export function domainSchema() {
+  return new SchemaField({
+    radius: int(20, { min: 5 }),
+    damage: str(""),
+    damageType: str(""),
+    conditions: str(""),
+    effect: str(""),
+    amplify: str("half", { choices: ["half", "minus1", "card"], blank: false }),
+    rounds: optInt(),
+    hardness: optInt(),
+    barrierHP: optInt()
+  });
+}
 
 /** A technique or path card. */
 export class AbilityData extends foundry.abstract.TypeDataModel {
@@ -28,6 +54,7 @@ export class AbilityData extends foundry.abstract.TypeDataModel {
       basicSave: bool(false),
       usesOutput: bool(false),
       isDomain: bool(false),
+      domain: domainSchema(),
       pressure: int(0, { min: 0, max: 10 }),
       description: html()
     };
@@ -40,6 +67,7 @@ export class AbilityData extends foundry.abstract.TypeDataModel {
 
 /** Weapons and cursed tools. Damage dice count follows your Grade's Reinforced Strike. */
 export class WeaponData extends foundry.abstract.TypeDataModel {
+  static migrateData(source) { return super.migrateData(migratePrice(source)); }
   static defineSchema() {
     return {
       dieSize: str("d8", { choices: ["d4", "d6", "d8", "d10", "d12"], blank: false }),
@@ -55,12 +83,14 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       quantity: int(1, { min: 0 }),
       bulk: str("1"),
       price: str(""),
+      yen: yen(),
       description: html()
     };
   }
 }
 
 export class ArmorData extends foundry.abstract.TypeDataModel {
+  static migrateData(source) { return super.migrateData(migratePrice(source)); }
   static defineSchema() {
     return {
       category: str("light", { choices: ["unarmored", "light", "medium", "heavy"], blank: false }),
@@ -73,17 +103,20 @@ export class ArmorData extends foundry.abstract.TypeDataModel {
       equipped: bool(false),
       bulk: str("1"),
       price: str(""),
+      yen: yen(),
       description: html()
     };
   }
 }
 
 export class GearData extends foundry.abstract.TypeDataModel {
+  static migrateData(source) { return super.migrateData(migratePrice(source)); }
   static defineSchema() {
     return {
       quantity: int(1, { min: 0 }),
       bulk: str("L"),
       price: str(""),
+      yen: yen(),
       traits: str(""),
       description: html()
     };
