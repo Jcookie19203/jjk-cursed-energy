@@ -19,7 +19,7 @@ async function loadLadders() {
   const ladders = {};
   for (const id of CARD_PACKS) {
     const pack = game.packs.get(id);
-    if (!pack) continue;
+    if (!pack?.visible) continue; // the card packs are GM-only
     const index = await pack.getIndex({ fields: ["system.technique", "system.tier", "system.slot", "system.ladder"] });
     for (const e of index) {
       const name = e.system?.technique;
@@ -107,12 +107,6 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     super._onFirstRender?.(context, options);
     this.element.addEventListener("dragover", ev => ev.preventDefault());
     this.element.addEventListener("drop", ev => this.#onDropItem(ev), { capture: true });
-    // GM-tab pickers mirror header fields; they carry data-field (not name) so the form never sees two
-    // values for one field — Foundry would join those into "Limitless,".
-    this.element.addEventListener("change", ev => {
-      const field = ev.target.closest?.("select[data-field]")?.dataset.field;
-      if (field && this.isEditable) this.document.update({ [field]: ev.target.value });
-    });
   }
 
   async #onDropItem(event) {
@@ -233,6 +227,16 @@ export class JJKSorcererSheet extends JJKBaseActorSheet {
     context.pressurePct = sys.attributes.pressure * 10;
     context.enrichedNotes = await TextEditorImpl().enrichHTML(sys.details.notes, { relativeTo: this.document, secrets: this.document.isOwner });
     context.isGM = game.user.isGM;
+    // Technique / layer-path dropdowns, built from the card compendiums (like PF2e's class picker).
+    const ladders = await loadLadders();
+    const names = Object.keys(ladders).sort((a, b) => a.localeCompare(b));
+    const opts = (list, current) => {
+      const o = Object.fromEntries(list.map(n => [n, n]));
+      if (current && !(current in o)) o[current] = `${current} (custom)`;
+      return o;
+    };
+    context.techniqueOptions = opts(names.filter(n => ladders[n].ladder !== "layer"), sys.techniqueName);
+    context.layerOptions = opts(names.filter(n => ladders[n].ladder === "layer"), sys.pathName);
     if (!context.isGM && context.tab === "track") context.tab = this.tabGroups.primary = "main";
     if (context.isGM && context.tab === "track") context.tracker = await this.#prepareTracker();
     return context;
@@ -242,9 +246,6 @@ export class JJKSorcererSheet extends JJKBaseActorSheet {
   async #prepareTracker() {
     const sys = this.document.system;
     const ladders = await loadLadders();
-    const names = Object.keys(ladders).sort((a, b) => a.localeCompare(b));
-    const main = names.filter(n => ladders[n].ladder !== "layer");
-    const layers = names.filter(n => ladders[n].ladder === "layer");
     const masters = game.packs.get(MASTER_PACK);
     const masterIndex = masters ? await masters.getIndex() : [];
 
@@ -265,8 +266,6 @@ export class JJKSorcererSheet extends JJKBaseActorSheet {
     };
 
     return {
-      mainOptions: Object.fromEntries(main.map(n => [n, n])),
-      layerOptions: Object.fromEntries(layers.map(n => [n, n])),
       ladders: [build(sys.techniqueName, "Technique / path"), build(sys.pathName, "Layer path")].filter(Boolean)
     };
   }
