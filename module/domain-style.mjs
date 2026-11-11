@@ -6,6 +6,7 @@
  * Motif textures live in assets/domains/<motif>.svg (white line art, tinted by the theme).
  */
 import { SYSTEM_ID } from "./config.mjs";
+import { DOMAIN_NAMES, voiceSlug } from "./domain-names.mjs";
 
 const SOCKET = `system.${SYSTEM_ID}`;
 const esc = s => foundry.utils.escapeHTML?.(String(s)) ?? String(s);
@@ -298,9 +299,13 @@ function playClip(src) {
 
 /* ---------- splash ---------- */
 
-function showSplash({ name, caster, theme, incomplete = false, sound = "", spoken = "" }) {
+function showSplash({ name, caster, theme, incomplete = false, sound = "", spoken = "", technique = "" }) {
   playDomainSound(theme);
-  if (sound) { if (game.settings.get(SYSTEM_ID, "domainVoice")) setTimeout(() => playClip(sound), 1000); }
+  // Voice: the Domain's own clip, else the technique's VOICEVOX clip, else the browser's built-in voices.
+  const jp = DOMAIN_NAMES[technique];
+  const voiced = game.settings.get(SYSTEM_ID, "domainVoice");
+  if (sound) { if (voiced) setTimeout(() => playClip(sound), 1000); }
+  else if (jp && !spoken) { if (voiced) setTimeout(() => playClip(`systems/${SYSTEM_ID}/assets/domains/voice/${voiceSlug(technique)}.wav`), 1000); }
   else speakDomain(name, spoken);
   if (!game.settings.get(SYSTEM_ID, "domainSplash")) return;
   document.querySelector(".jjk-domain-splash")?.remove();
@@ -312,6 +317,7 @@ function showSplash({ name, caster, theme, incomplete = false, sound = "", spoke
       <div class="dom-kanji">領域展開</div>
       <div class="dom-label">${incomplete ? "Incomplete Domain" : "Domain Expansion"}</div>
       <div class="dom-name">${esc(name)}</div>
+      ${DOMAIN_NAMES[technique] ? `<div class="dom-jp">${esc(DOMAIN_NAMES[technique][0])}</div>` : ""}
       <div class="dom-caster">${esc(caster)}</div>
     </div>`;
   el.addEventListener("click", () => el.remove());
@@ -368,7 +374,7 @@ export function registerDomainStyle() {
     scope: "client", config: true, type: Boolean, default: true
   });
   game.settings.register(SYSTEM_ID, "domainVoice", {
-    name: "Domain Expansion announcement", hint: "Say \"Ryōiki Tenkai\" and the Domain's name when one opens (your browser's built-in voices, or the Domain's own sound file if it has one).",
+    name: "Domain Expansion announcement", hint: "Say \"Ryōiki Tenkai\" and the Domain's name when one opens. Technique Domains use VOICEVOX clips (VOICEVOX:青山龍星, 麒ヶ島宗麟, 雀松朱司, 離途, 玄野武宏); others use your browser's voices or the Domain's own sound file.",
     scope: "client", config: true, type: Boolean, default: true
   });
   // Voices load asynchronously in Chrome; ask early so the first Domain has one.

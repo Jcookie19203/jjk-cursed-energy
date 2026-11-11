@@ -167,6 +167,7 @@
   font-family: "Noto Serif JP", "Yu Mincho", "MS Mincho", serif; animation: jjk-dom-kanji 1s 0.5s both; }
 .jjk-domain-splash .dom-label { font-size: 2.4vmin; letter-spacing: 1.2vmin; text-transform: uppercase; opacity: 0.85; margin-top: 1.5vmin; animation: jjk-dom-up 0.6s 0.9s both; }
 .jjk-domain-splash .dom-name { font-size: 7vmin; font-weight: 800; font-family: "Modesto Condensed", "Signika", serif; margin-top: 1vmin; animation: jjk-dom-up 0.7s 1.05s both; }
+.jjk-domain-splash .dom-jp { font-size: 3.6vmin; letter-spacing: 0.8vmin; color: var(--dom-accent); font-family: "Noto Serif JP", "Yu Mincho", "MS Mincho", serif; margin-top: 0.6vmin; animation: jjk-dom-up 0.6s 1.2s both; }
 .jjk-domain-splash .dom-caster { font-size: 2.2vmin; opacity: 0.75; margin-top: 1vmin; animation: jjk-dom-up 0.6s 1.3s both; }
 .jjk-domain-splash.out { animation: jjk-dom-out 0.8s ease-in forwards; }
 @keyframes jjk-dom-in { from { clip-path: circle(0% at 50% 50%); } to { clip-path: circle(75% at 50% 50%); } }

@@ -60,3 +60,15 @@ Version 0.1.1, tested on Foundry v14 (build 369). Card parsing is automatic, so 
 1. Bump `version` in `system.json` and `package.json`, and point `download` at the new tag.
 2. `npm run check && npm run zip`
 3. Create a GitHub release tagged `v<version>` with `system.json` and `dist/jjk-cursed-energy.zip` attached.
+
+## Credits
+
+Domain Expansion voice clips (`assets/domains/voice/`) were made with [VOICEVOX](https://voicevox.hiroshiba.jp/):
+
+- VOICEVOX:青山龍星
+- VOICEVOX:麒ヶ島宗麟
+- VOICEVOX:雀松朱司
+- VOICEVOX:離途
+- VOICEVOX:玄野武宏
+
+Each voice is used under its own terms, which allow free use with this credit. The clips are regenerated with `node tools/domain-voices.mjs` while the VOICEVOX app is running. The opening sound effects are synthesised in the browser, and the Domain motif textures (`assets/domains/*.svg`) are original to this project.
