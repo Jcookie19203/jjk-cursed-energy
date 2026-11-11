@@ -1,7 +1,11 @@
   <section class="jjk-tab attacks">
     {{> "systems/jjk-cursed-energy/templates/actor/parts/resources.hbs"}}
     {{#if isCurse}}{{#if isGM}}<p class="hint">Actions read from this curse's stat block. <a data-action="readStatBlock" title="Re-read the stat block (replaces the actions it made before)">⟳ Re-read stat block</a></p>{{/if}}{{/if}}
+    {{#if isCurse}}
+    <p class="hint">Click an action and the system pays the curse's CE, rolls the attack or each target's save, and rolls the damage with an Apply button per target. Target the PCs first (T). Shift-click to add a situational modifier.</p>
+    {{else}}
     <p class="hint">Click an attack button and the system pays the CE, rolls against your target, rolls damage on a hit, tries a Black Flash on a crit, and updates your technique's resources. Target a token first (T). Shift-click to add a situational modifier.</p>
+    {{/if}}
     <h4>Strikes</h4>
     <ol class="jjk-attacks">
       {{#each attacks.strikes}}
