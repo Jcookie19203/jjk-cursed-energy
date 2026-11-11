@@ -226,7 +226,7 @@ async function doOpen(msg) {
     st.drawingId = await drawStyledBarrier(scene, st, st.theme);
   }
   await actor.setFlag(SYSTEM_ID, "domain", st);
-  broadcastSplash({ name: shortName(st.name), caster: actor.name, theme: st.theme, incomplete: st.incomplete });
+  broadcastSplash({ name: shortName(st.name), caster: actor.name, theme: st.theme, incomplete: st.incomplete, sound: cfg.sound || "", spoken: cfg.spokenName || "" });
 
   const where = st.sceneId ? `a ${radius}-ft burst` : `${st.targetUuids.length} targeted creature(s) (no token on the map)`;
   await ChatMessage.create({

@@ -128,93 +128,180 @@ const VOICE = {
 };
 
 let audioCtx = null;
-/** The Domain opening: a barrier slam, a rising rush, a temple bell and a drone under the title card. Synthesised, no files. */
+let reverbBuf = null;
+
+/** A big-hall impulse response, generated once (decaying stereo noise). */
+function hallReverb(ctx, seconds = 3.2) {
+  if (reverbBuf && reverbBuf.sampleRate === ctx.sampleRate) return reverbBuf;
+  const len = Math.floor(ctx.sampleRate * seconds);
+  reverbBuf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = reverbBuf.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
+  }
+  return reverbBuf;
+}
+
+/**
+ * The anime Domain opening, synthesised (no files):
+ *   0.0s  rising whoosh (reverse-swell noise sweeping up) + tension riser tone
+ *   1.0s  IMPACT: metallic "shing" + taiko double hit + sub drop, into a huge hall reverb
+ *   1.3s  dark choir-like pad under the title card
+ * Per-motif voicing changes the pitch, grit and pad interval.
+ */
 function playDomainSound(theme) {
   if (!game.settings.get(SYSTEM_ID, "domainSound")) return;
   try {
     audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
     const ctx = audioCtx;
     if (ctx.state === "suspended") ctx.resume();
-    const [pitch, noiseAmt, interval] = VOICE[theme.motif] ?? [1, 0.3, 5];
-    const vol = (game.settings.get("core", "globalInterfaceVolume") ?? 0.5) * 0.9;
+    const [pitch, grit, interval] = VOICE[theme.motif] ?? [1, 0.3, 5];
+    const vol = (game.settings.get("core", "globalInterfaceVolume") ?? 0.5);
     const t0 = ctx.currentTime + 0.05;
-    const master = ctx.createGain();
-    master.gain.value = vol;
-    const comp = ctx.createDynamicsCompressor();
-    master.connect(comp).connect(ctx.destination);
 
-    const env = (node, a, peak, d, at = t0) => {
+    // Bus: dry + hall reverb → compressor → out.
+    const out = ctx.createGain(); out.gain.value = vol;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
+    out.connect(comp).connect(ctx.destination);
+    const verb = ctx.createConvolver(); verb.buffer = hallReverb(ctx);
+    const verbGain = ctx.createGain(); verbGain.gain.value = 0.55;
+    verb.connect(verbGain).connect(out);
+    const send = node => { node.connect(out); node.connect(verb); return node; };
+
+    const env = (node, at, a, peak, d, curve = "exp") => {
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, at);
-      g.gain.exponentialRampToValueAtTime(peak, at + a);
+      if (curve === "lin") g.gain.linearRampToValueAtTime(peak, at + a); else g.gain.exponentialRampToValueAtTime(peak, at + a);
       g.gain.exponentialRampToValueAtTime(0.0001, at + a + d);
-      node.connect(g).connect(master);
-      return g;
+      node.connect(g);
+      return send(g);
     };
     const noise = seconds => {
-      const buf = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+      const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * seconds), ctx.sampleRate);
       const data = buf.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      return src;
+      const src = ctx.createBufferSource(); src.buffer = buf; return src;
     };
+    const osc = (type, f) => { const o = ctx.createOscillator(); o.type = type; o.frequency.value = f; return o; };
 
-    // 1. Rising rush (the barrier drawing in).
-    const rush = noise(1.2);
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass"; bp.Q.value = 1.2;
-    bp.frequency.setValueAtTime(200, t0);
-    bp.frequency.exponentialRampToValueAtTime(3000 * pitch, t0 + 1.0);
-    rush.connect(bp);
-    env(bp, 0.9, 0.25 + noiseAmt * 0.25, 0.25);
-    rush.start(t0); rush.stop(t0 + 1.2);
+    // 1. Whoosh riser (noise swept up) + a tension tone gliding up a fifth.
+    const hit = t0 + 1.0;
+    const wn = noise(1.1);
+    const wf = ctx.createBiquadFilter(); wf.type = "bandpass"; wf.Q.value = 2;
+    wf.frequency.setValueAtTime(300, t0); wf.frequency.exponentialRampToValueAtTime(6000 * Math.min(pitch, 1.5), hit);
+    wn.connect(wf); env(wf, t0, 0.95, 0.35 + grit * 0.2, 0.08, "lin");
+    wn.start(t0); wn.stop(hit + 0.1);
+    const riser = osc("sawtooth", 110 * pitch);
+    riser.frequency.setValueAtTime(110 * pitch, t0); riser.frequency.exponentialRampToValueAtTime(330 * pitch, hit);
+    const rf = ctx.createBiquadFilter(); rf.type = "lowpass"; rf.frequency.setValueAtTime(400, t0); rf.frequency.exponentialRampToValueAtTime(3000, hit);
+    riser.connect(rf); env(rf, t0, 0.95, 0.08, 0.06, "lin");
+    riser.start(t0); riser.stop(hit + 0.1);
 
-    // 2. The slam: a sub drop and a low thud.
-    const slamAt = t0 + 1.0;
-    const sub = ctx.createOscillator();
-    sub.type = "sine";
-    sub.frequency.setValueAtTime(90 * Math.min(pitch, 1.2), slamAt);
-    sub.frequency.exponentialRampToValueAtTime(28, slamAt + 1.6);
-    env(sub, 0.01, 0.9, 2.2, slamAt);
-    sub.start(slamAt); sub.stop(slamAt + 2.4);
-    const thud = noise(0.6);
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass"; lp.frequency.value = 400 + noiseAmt * 1200;
-    thud.connect(lp);
-    env(lp, 0.005, 0.5 + noiseAmt * 0.3, 0.5, slamAt);
-    thud.start(slamAt); thud.stop(slamAt + 0.6);
+    // 2a. Metallic "shing": bright inharmonic partials with a fast attack and a long ring.
+    for (const [r, a, d] of [[1, 0.16, 2.2], [2.41, 0.12, 1.8], [3.86, 0.09, 1.4], [5.93, 0.06, 1.0], [8.12, 0.04, 0.7]]) {
+      const o = osc("sine", 880 * pitch * r);
+      env(o, hit, 0.003, a, d);
+      o.start(hit); o.stop(hit + d + 0.1);
+    }
+    const sn = noise(0.25);
+    const sf = ctx.createBiquadFilter(); sf.type = "highpass"; sf.frequency.value = 5000;
+    sn.connect(sf); env(sf, hit, 0.002, 0.3, 0.2);
+    sn.start(hit); sn.stop(hit + 0.25);
 
-    // 3. Temple bell: inharmonic partials.
-    const base = 220 * pitch;
-    for (const [ratio, amp, dec] of [[1, 0.35, 3.5], [2.76, 0.18, 2.4], [5.4, 0.1, 1.6], [8.9, 0.05, 1.0]]) {
-      const o = ctx.createOscillator();
-      o.type = "sine"; o.frequency.value = base * ratio;
-      env(o, 0.004, amp, dec, slamAt + 0.05);
-      o.start(slamAt); o.stop(slamAt + dec + 0.2);
+    // 2b. Taiko double hit (DON-don) with a pitch drop each.
+    for (const [at, amp] of [[hit, 1.0], [hit + 0.32, 0.7]]) {
+      const drum = osc("sine", 140 * Math.min(pitch, 1.2));
+      drum.frequency.setValueAtTime(140 * Math.min(pitch, 1.2), at);
+      drum.frequency.exponentialRampToValueAtTime(45, at + 0.5);
+      env(drum, at, 0.004, amp, 0.9);
+      drum.start(at); drum.stop(at + 1.0);
+      const skin = noise(0.12);
+      const kf = ctx.createBiquadFilter(); kf.type = "lowpass"; kf.frequency.value = 900 + grit * 2000;
+      skin.connect(kf); env(kf, at, 0.002, 0.35 * amp, 0.1);
+      skin.start(at); skin.stop(at + 0.12);
     }
 
-    // 4. Drone under the title card.
-    const droneAt = slamAt + 0.2;
+    // 2c. Sub drop that shakes the room.
+    const sub = osc("sine", 70);
+    sub.frequency.setValueAtTime(70, hit); sub.frequency.exponentialRampToValueAtTime(26, hit + 2.2);
+    env(sub, hit, 0.01, 0.9, 2.4);
+    sub.start(hit); sub.stop(hit + 2.6);
+
+    // 3. Dark choir-ish pad: detuned saws through a vowel-ish band filter, under the title.
+    const padAt = hit + 0.3;
     const semis = n => Math.pow(2, n / 12);
-    for (const [f, amp] of [[55 * pitch, 0.18], [55 * pitch * semis(interval), 0.1], [110 * pitch, 0.06]]) {
-      const o = ctx.createOscillator();
-      o.type = "sawtooth"; o.frequency.value = f;
-      const f2 = ctx.createBiquadFilter();
-      f2.type = "lowpass"; f2.frequency.value = 600;
-      o.connect(f2);
-      env(f2, 0.8, amp, 2.2, droneAt);
-      o.start(droneAt); o.stop(droneAt + 3.2);
+    for (const [f, amp] of [[110 * pitch, 0.06], [110 * pitch * semis(interval), 0.045], [220 * pitch, 0.035], [110 * pitch * 1.006, 0.05]]) {
+      const o = osc("sawtooth", f);
+      const vf = ctx.createBiquadFilter(); vf.type = "bandpass"; vf.Q.value = 3; vf.frequency.value = 700;
+      o.connect(vf); env(vf, padAt, 0.9, amp, 2.4, "lin");
+      o.start(padAt); o.stop(padAt + 3.5);
     }
   } catch (err) {
     console.warn(`${SYSTEM_ID} | Domain sound failed`, err);
   }
 }
 
+/* ---------- voice ---------- */
+
+/** Japanese names of the canon Domains (spoken by a Japanese voice when the system has one). */
+const JP_NAMES = {
+  "Unlimited Void": "無量空処", "Malevolent Shrine": "伏魔御廚子", "Chimera Shadow Garden": "嵌合暗翳庭",
+  "Self-Embodiment of Perfection": "自閉円頓裹", "Coffin of the Iron Mountain": "蓋棺鉄囲山",
+  "Horizon of the Captivating Skandha": "蕩蘊平線", "Idle Death Gamble": "坐殺博徒", "Deadly Sentencing": "誅伏賜死",
+  "Time Cell Moon Palace": "時胞月宮殿", "Authentic Mutual Love": "真贋相愛"
+};
+
+/** Pick a browser voice for a language prefix, preferring deeper / male-named ones. */
+function pickVoice(lang) {
+  const voices = window.speechSynthesis?.getVoices?.() ?? [];
+  const matches = voices.filter(v => v.lang?.toLowerCase().startsWith(lang));
+  return matches.find(v => /male|otoya|ichiro|keita|daichi|guy|david|mark|george|ryan/i.test(v.name)) ?? matches[0] ?? null;
+}
+
+/** "領域展開 … <Domain name>", spoken by the browser's built-in voices (free, offline-capable on most systems). */
+function speakDomain(name, spoken) {
+  if (!game.settings.get(SYSTEM_ID, "domainVoice") || !window.speechSynthesis) return;
+  try {
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const vol = Math.min(1, (game.settings.get("core", "globalInterfaceVolume") ?? 0.5) * 1.6);
+    const say = (text, lang, rate, pitch) => {
+      const u = new SpeechSynthesisUtterance(text);
+      const v = pickVoice(lang);
+      if (v) u.voice = v;
+      u.lang = v?.lang ?? (lang === "ja" ? "ja-JP" : "en-US");
+      u.rate = rate; u.pitch = pitch; u.volume = vol;
+      return u;
+    };
+    // "Ryōiki Tenkai" in Japanese if the system has a Japanese voice, else romanised in English.
+    const ja = pickVoice("ja");
+    const intro = ja ? say("領域展開", "ja", 0.8, 0.6) : say("Ryoh-ee-kee… Ten-kai.", "en", 0.75, 0.5);
+    // Canon Domains have Japanese names; with a Japanese voice, say those.
+    const jpName = spoken || JP_NAMES[name] || "";
+    const isJp = /[぀-ヿ一-龯]/.test(jpName);
+    const title = ja && isJp ? say(jpName, "ja", 0.8, 0.6) : say(spoken && !isJp ? spoken : name, "en", 0.82, 0.55);
+    setTimeout(() => { synth.speak(intro); synth.speak(title); }, 1150);
+  } catch (err) {
+    console.warn(`${SYSTEM_ID} | Domain voice failed`, err);
+  }
+}
+
+/** A recorded clip for this Domain, played on this client. */
+function playClip(src) {
+  try {
+    const vol = game.settings.get("core", "globalInterfaceVolume") ?? 0.5;
+    (foundry.audio?.AudioHelper ?? AudioHelper).play({ src, volume: vol, autoplay: true, loop: false }, false);
+  } catch (err) {
+    console.warn(`${SYSTEM_ID} | Domain clip failed`, err);
+  }
+}
+
 /* ---------- splash ---------- */
 
-function showSplash({ name, caster, theme, incomplete = false }) {
+function showSplash({ name, caster, theme, incomplete = false, sound = "", spoken = "" }) {
   playDomainSound(theme);
+  if (sound) { if (game.settings.get(SYSTEM_ID, "domainVoice")) setTimeout(() => playClip(sound), 1000); }
+  else speakDomain(name, spoken);
   if (!game.settings.get(SYSTEM_ID, "domainSplash")) return;
   document.querySelector(".jjk-domain-splash")?.remove();
   const el = document.createElement("div");
@@ -280,5 +367,11 @@ export function registerDomainStyle() {
     name: "Domain Expansion sound", hint: "Play the Domain opening sound (follows your Interface volume).",
     scope: "client", config: true, type: Boolean, default: true
   });
+  game.settings.register(SYSTEM_ID, "domainVoice", {
+    name: "Domain Expansion announcement", hint: "Say \"Ryōiki Tenkai\" and the Domain's name when one opens (your browser's built-in voices, or the Domain's own sound file if it has one).",
+    scope: "client", config: true, type: Boolean, default: true
+  });
+  // Voices load asynchronously in Chrome; ask early so the first Domain has one.
+  window.speechSynthesis?.getVoices?.();
   game.socket.on(SOCKET, msg => { if (msg?.action === "domainSplash") showSplash(msg); });
 }

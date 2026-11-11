@@ -29,7 +29,10 @@ export function domainSchema() {
     amplify: str("half", { choices: ["half", "minus1", "card"], blank: false }),
     rounds: optInt(),
     hardness: optInt(),
-    barrierHP: optInt()
+    barrierHP: optInt(),
+    // Presentation: a recorded clip played to everyone when it opens (replaces the spoken name), and how to say the name.
+    sound: str(""),
+    spokenName: str("")
   });
 }
 

@@ -41,6 +41,8 @@
       <label>Extra rounds (blank = by Grade) <input type="number" name="system.domain.rounds" value="{{system.domain.rounds}}" min="0"></label>
       <label>Barrier Hardness (blank = Reinf. ×2) <input type="number" name="system.domain.hardness" value="{{system.domain.hardness}}" min="0"></label>
       <label>Barrier HP (blank = max CE ×3) <input type="number" name="system.domain.barrierHP" value="{{system.domain.barrierHP}}" min="1"></label>
+      <label class="wide">Opening sound file (optional, replaces the spoken name) <input type="text" name="system.domain.sound" value="{{system.domain.sound}}" placeholder="worlds/my-world/audio/domain.ogg"></label>
+      <label class="wide">Spoken name (optional, e.g. a Japanese reading) <input type="text" name="system.domain.spokenName" value="{{system.domain.spokenName}}" placeholder="Muryōkūsho"></label>
     </div>
     <p class="hint">"output" means Grade Rank × your technique die + key mod. Special Grade casters get a 30-ft radius and 2 extra rounds automatically.</p>
     {{/if}}
