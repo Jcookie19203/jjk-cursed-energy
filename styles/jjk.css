@@ -229,3 +229,14 @@
 .jjk-targets .jjk-cond { background: #5b2a8622; border: 1px solid #5b2a86; border-radius: 10px; font-size: 0.85em; }
 .jjk-targets .jjk-cond.applied { background: #5b2a86; color: #fff; }
 .jjk-targets .jjk-target-row { flex-wrap: wrap; }
+
+/* Target picker (v0.6.1) */
+.jjk-picker { display: flex; flex-direction: column; gap: 3px; max-height: 60vh; overflow-y: auto; }
+.jjk-picker .jjk-pick { display: grid; grid-template-columns: 18px 36px 1fr auto; gap: 8px; align-items: center; padding: 3px 6px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; }
+.jjk-picker .jjk-pick:hover { border-color: var(--color-border-highlight, #5b2a86); }
+.jjk-picker .jjk-pick:has(input:checked) { background: rgba(91, 42, 134, 0.18); border-color: #5b2a86; }
+.jjk-picker .jjk-pick img { width: 36px; height: 36px; object-fit: contain; border: 0; }
+.jjk-picker .jjk-pick .who { font-weight: bold; }
+.jjk-picker .jjk-pick .tag { font-size: 0.8em; opacity: 0.75; }
+.jjk-picker .jjk-pick.enemy .tag { color: #c03030; }
+.jjk-picker .jjk-pick.ally .tag { color: #2a8a4a; }

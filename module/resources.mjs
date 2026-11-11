@@ -249,6 +249,8 @@ export const resourceHooks = {
     const usesFuel = fuel && item.system.usesOutput && !/^charge/i.test(item.name) && (res()[fuel.key] ?? 0) > 0;
 
     return {
+      needsTargets: rules.some(r => r.target) || isFrontMoney,
+      targetsAllies: isFrontMoney,
       ask(actor) {
         let html = "";
         const r = res();

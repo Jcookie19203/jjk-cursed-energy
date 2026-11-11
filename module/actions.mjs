@@ -64,6 +64,55 @@ async function askCE({ title, min, max, extra = "" }) {
 
 const userTargets = () => [...game.user.targets].map(t => t.actor).filter(Boolean);
 
+/** The actor's token on the current scene (for distances and "is this an enemy"). */
+function ownToken(actor) {
+  return canvas?.tokens?.placeables.find(t => t.actor === actor || (actor.isToken ? t.document === actor.token : t.actor?.id === actor.id && t.document.actorLink));
+}
+
+/**
+ * "Who are you attacking?": a picker of the tokens on this scene, for players who don't use the target tool.
+ * Asks per the client setting (always / only when nothing is targeted / never). Picking also targets the tokens,
+ * so everything downstream (Apply buttons, resources) sees the same targets. Returns actors, [] to go on with
+ * no target, or null if cancelled.
+ */
+async function chooseTargets(actor, { title, multi = false, allies = false } = {}) {
+  const mode = game.settings.get(SYSTEM_ID, "targetPicker");
+  const current = [...game.user.targets];
+  if (mode === "never" || (mode === "empty" && current.length)) return userTargets();
+  const me = ownToken(actor);
+  const tokens = (canvas?.tokens?.placeables ?? []).filter(t => t.actor && t !== me && (game.user.isGM || !t.document.hidden) && t.visible !== false);
+  if (!tokens.length) return userTargets();
+  const myDisp = me?.document.disposition ?? (actor.hasPlayerOwner ? 1 : -1);
+  const hostile = t => (myDisp === 1 ? t.document.disposition === -1 : myDisp === -1 ? t.document.disposition === 1 : t.document.disposition !== myDisp);
+  const dist = t => (me ? Math.round(canvas.grid.measurePath([me.center, t.center]).distance) : null);
+  const rows = tokens.map(t => ({ t, enemy: hostile(t), d: dist(t), on: current.includes(t) }))
+    .sort((a, b) => (allies ? a.enemy - b.enemy : b.enemy - a.enemy) || (a.d ?? 0) - (b.d ?? 0) || a.t.name.localeCompare(b.t.name));
+  const type = multi ? "checkbox" : "radio";
+  const anyOn = rows.some(r => r.on);
+  const html = rows.map((r, i) => `<label class="jjk-pick ${r.enemy ? "enemy" : "ally"}">
+      <input type="${type}" name="pick" value="${r.t.id}" ${r.on || (!multi && !anyOn && i === 0) ? "checked" : ""}>
+      <img src="${r.t.document.texture.src}" alt="">
+      <span class="who">${esc(r.t.name)}</span>
+      <span class="tag">${r.enemy ? "enemy" : "ally"}${r.d !== null ? ` · ${r.d} ft` : ""}</span></label>`).join("");
+  let picked;
+  try {
+    picked = await DialogV2.wait({
+      window: { title: title ?? "Who are you targeting?" },
+      content: `<div class="jjk-dialog jjk-picker"><p class="hint">${multi ? "Tick everyone it affects." : "Pick one."}</p>${html}</div>`,
+      buttons: [
+        { action: "ok", label: "Go", default: true, callback: (e, b) => [...b.form.querySelectorAll("input[name=pick]:checked")].map(i => i.value) },
+        { action: "none", label: "No target", callback: () => [] }
+      ],
+      rejectClose: false
+    });
+  } catch { return null; }
+  if (picked === null || picked === undefined) return null;
+  const chosen = picked.map(id => canvas.tokens.get(id)).filter(Boolean);
+  // Mirror the choice onto the user's targets (so the token rings show who was hit).
+  try { game.user.updateTokenTargets?.(chosen.map(t => t.id)); } catch {}
+  return chosen.map(t => t.actor).filter(Boolean);
+}
+
 /* ---------- damage ---------- */
 
 /** "Apply frightened 1" buttons for one target. */
@@ -121,7 +170,8 @@ async function tryBlackFlash(actor, degree) {
 
 /** Reinforced Strike (weapon = null) or a weapon Strike, fully resolved. */
 export async function performStrike(actor, weapon = null, { map = 0, prompt = false } = {}) {
-  const targets = userTargets();
+  const targets = await chooseTargets(actor, { title: `${weapon?.name ?? "Reinforced Strike"}: who are you attacking?` });
+  if (targets === null) return;
   const flags = { auto: true };
   const r = weapon ? await actor.rollWeaponAttack(weapon, { prompt, map, flags }) : await actor.rollCursedAttack("Reinforced Strike", { prompt, map, flags });
   if (!r) return;
@@ -155,8 +205,16 @@ export async function performStrike(actor, weapon = null, { map = 0, prompt = fa
 export async function performAbility(actor, item, { map = 0, prompt = false } = {}) {
   const s = item.system;
   if (s.isDomain || s.allPool) return actor.openDomain(item);
-  const targets = userTargets();
   const hook = resourceHooks.forCard(actor, item);
+  // Ask who it's aimed at when it rolls against someone, deals damage, or marks a creature.
+  const wantsTarget = s.resolution !== "none" || (s.usesOutput || !!s.damage?.trim()) || hook?.needsTargets;
+  let targets = userTargets();
+  if (wantsTarget) {
+    const multi = s.resolution === "save";
+    targets = await chooseTargets(actor, { title: `${item.name}: ${multi ? "who does it affect?" : hook?.targetsAllies ? "who is it for?" : "who are you targeting?"}`, multi, allies: !!hook?.targetsAllies });
+    if (targets === null) return;
+    if (s.resolution === "attack") targets = targets.slice(0, 1);
+  }
 
   // 1. Cost.
   const range = costRange(actor, item);
@@ -259,6 +317,12 @@ export async function applyCondTo(targetUuid, key, value) {
 }
 
 export function registerActions() {
+  game.settings.register(SYSTEM_ID, "targetPicker", {
+    name: "Ask who you're targeting",
+    hint: "When you click an attack or technique, show a list of the tokens on the scene to pick from. \"When nothing is targeted\" skips the list if you've already targeted tokens with the target tool (T).",
+    scope: "client", config: true, type: String, default: "empty",
+    choices: { empty: "When nothing is targeted", always: "Always", never: "Never (use the target tool)" }
+  });
   gmHandlers.applyConditionTo = async msg => {
     const doc = await fromUuid(msg.targetUuid);
     const target = doc?.actor ?? doc;
