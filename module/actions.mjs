@@ -172,8 +172,31 @@ async function postDamage({ actor, label, formula, crit = false, bf = false, dam
 
 /** On a crit from Grade 4 up: roll the Black Flash flat check automatically. Returns true if it sparked. */
 async function tryBlackFlash(actor, degree) {
-  if (degree !== 3 || actor.type !== "sorcerer" || (actor.system.gradeRank ?? 1) < 2) return false;
-  return !!(await actor.attemptBlackFlash());
+  if (actor.type !== "sorcerer" || (actor.system.gradeRank ?? 1) < 2) return false;
+  if (degree === 3) return !!(await actor.attemptBlackFlash());
+  if (degree === 2) return tryBlackFlashFocus(actor);
+  return false;
+}
+
+/**
+ * Black Flash Focus (Core Rules III): once per turn, on a normal hit, spend 2 CE to try for a Black Flash at flat
+ * DC 10 (lowered by composure). Asked, not automatic, because it costs CE.
+ */
+async function tryBlackFlashFocus(actor) {
+  if (!actor.system.hasBlackFlashFocus || (actor.system.attributes.ce.value ?? 0) < 2) return false;
+  const c = game.combat;
+  const turnKey = c?.started ? `${c.id}.${c.round}.${c.turn}` : null;
+  if (turnKey && actor.getFlag(SYSTEM_ID, "focusTurn") === turnKey) return false;
+  const dc = Math.max(3, 10 - (actor.system.attributes.composure ?? 0));
+  const ok = await DialogV2.confirm({
+    window: { title: "Black Flash Focus" },
+    content: `<p>It's a hit. Spend <strong>2 CE</strong> to try for a Black Flash (flat DC ${dc})?</p><p class="hint">Once per turn. On a success the damage is maximized and doubled.</p>`,
+    rejectClose: false
+  });
+  if (!ok) return false;
+  if (!(await actor.spendCE(2, { reason: "Black Flash Focus" }))) return false;
+  if (turnKey) await actor.setFlag(SYSTEM_ID, "focusTurn", turnKey);
+  return !!(await actor.attemptBlackFlash({ baseDC: 10 }));
 }
 
 /* ---------- strikes ---------- */
