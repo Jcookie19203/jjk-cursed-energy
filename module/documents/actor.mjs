@@ -55,8 +55,16 @@ export class JJKActor extends Actor {
   }
 
   /** A cursed strike / Strike using Cursed Attack. */
-  rollCursedAttack(label = "Cursed Strike", { bonus = 0, prompt = true, flags = {} } = {}) {
-    return rollCheck({ actor: this, label, modifier: this.system.cursedAttack.value + bonus, isAttack: true, prompt, flags });
+  rollCursedAttack(label = "Cursed Strike", { bonus = 0, prompt = true, flags = {}, map = 0, agile = false } = {}) {
+    return rollCheck({ actor: this, label, modifier: this.system.cursedAttack.value + bonus, isAttack: true, prompt, flags, map, agile });
+  }
+
+  /** Attack with a weapon (its override bonus, else Cursed Attack + its bonus). */
+  rollWeaponAttack(weapon, { prompt = true, map = 0 } = {}) {
+    const agile = /\bagile\b/i.test(weapon.system.traits ?? "");
+    const ov = weapon.system.attackOverride;
+    if (Number.isFinite(ov)) return rollCheck({ actor: this, label: weapon.name, modifier: ov, isAttack: true, prompt, map, agile });
+    return this.rollCursedAttack(weapon.name, { bonus: weapon.system.bonus, prompt, map, agile });
   }
 
   /** Output damage: CE spent × technique die + key mod. */
@@ -107,6 +115,7 @@ export class JJKActor extends Actor {
 
   async focusedFlow() {
     await this.gainCE(2);
+    await game.jjk.resources?.onFocusedFlow(this);
     ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), content: `<div class="jjk-chat"><strong>Focused Flow</strong>: regains 2 CE.</div>` });
   }
 
@@ -122,6 +131,7 @@ export class JJKActor extends Actor {
     // The Domain aftermath (fatigued at 0 CE) lasts "until you Reset" (Core Rules IV).
     if (burnedOut) up["system.conditions.fatigued"] = false;
     await this.update(up);
+    await game.jjk.resources?.onRest(this);
     ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), content: `<div class="jjk-chat"><strong>Reset</strong>: CE restored${this.isSorcerer ? ", composure and Pressure cleared" : ""}${burnedOut ? ", Domain fatigue gone" : ""}.</div>` });
   }
 
@@ -187,7 +197,7 @@ export class JJKActor extends Actor {
     const comp = this.system.attributes.composure;
     const dc = Math.max(3, baseDC - comp);
     const ok = await rollFlat({ actor: this, label: "Black Flash", dc });
-    if (!ok) return;
+    if (!ok) return false;
     const gain = this.system.gradeRank;
     await this.update({ "system.attributes.composure": Math.min(this.system.composureMax ?? 4, comp + 1) });
     await this.gainCE(gain);
@@ -195,6 +205,7 @@ export class JJKActor extends Actor {
       speaker: ChatMessage.getSpeaker({ actor: this }),
       content: `<div class="jjk-chat jjk-blackflash"><h3>⚫ BLACK FLASH</h3><p>Maximize the hit's damage dice, then double them for the critical (use the Black Flash box when rolling damage). ${this.name} regains <strong>${gain} CE</strong> and gains <strong>1 composure</strong>.</p></div>`
     });
+    return true;
   }
 
   /** Open a Domain: automated by module/domain.mjs unless the GM turned that off. */

@@ -1,0 +1,34 @@
+{{#if resources}}
+<div class="jjk-res-panel">
+  <h4>{{resources.technique}} <small class="lock" title="Only this character's owner and the GM can see these">🔒 private</small></h4>
+  {{#each resources.items}}
+  <div class="jjk-res kind-{{kind}}" data-res-key="{{key}}" title="{{hint}}">
+    <span class="lbl">{{label}}</span>
+    {{#if (jjk-eq kind "number")}}
+      <a data-action="resStep" data-delta="-1">−</a>
+      <strong>{{value}}</strong>{{#if max}}<span class="max">/{{max}}</span>{{/if}}
+      <a data-action="resStep" data-delta="1">+</a>
+      {{#if max}}<span class="bar"><span style="width: {{pct}}%"></span></span>{{/if}}
+    {{/if}}
+    {{#if (jjk-eq kind "info")}}<strong>{{value}}</strong>{{/if}}
+    {{#if (jjk-eq kind "toggle")}}
+      <a data-action="resToggle" class="toggle {{#if value}}on{{/if}}">{{#if value}}ON{{else}}off{{/if}}</a>
+    {{/if}}
+    {{#if (jjk-eq kind "list")}}
+      <span class="entries">{{#each entries}}<span class="chip">{{this}} <a data-action="resRemove" data-index="{{@index}}">✕</a></span>{{else}}<span class="hint">none</span>{{/each}}</span>
+      <a data-action="resAdd" title="Add one">+</a>
+    {{/if}}
+    {{#if (jjk-eq kind "target")}}
+      <a data-action="resAddTargets" title="Track your targeted tokens">+ targeted</a>
+      <ul class="entries">
+        {{#each entries}}
+        <li data-target-uuid="{{uuid}}"><span>{{name}}</span>
+          <a data-action="resStep" data-delta="-1">−</a><strong>{{value}}</strong><a data-action="resStep" data-delta="1">+</a>
+          <a data-action="resRemove">✕</a></li>
+        {{else}}<li class="hint">nobody yet</li>{{/each}}
+      </ul>
+    {{/if}}
+  </div>
+  {{/each}}
+</div>
+{{/if}}

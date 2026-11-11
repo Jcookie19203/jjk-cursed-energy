@@ -39,6 +39,7 @@
 
   <nav class="jjk-tabs">
     <a class="{{#if (jjk-eq tab 'main')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="main">Main</a>
+    <a class="{{#if (jjk-eq tab 'attacks')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="attacks">Attacks</a>
     <a class="{{#if (jjk-eq tab 'cards')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="cards">Technique</a>
     <a class="{{#if (jjk-eq tab 'gear')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="gear">Gear &amp; Vows</a>
     <a class="{{#if (jjk-eq tab 'notes')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="notes">Details</a>
@@ -83,6 +84,7 @@
             <a data-action="takeover">Save (DC {{system.takeoverDC}})</a></li>
           {{/if}}
         </ul>
+        {{> "systems/jjk-cursed-energy/templates/actor/parts/resources.hbs"}}
       </div>
       <div class="col">
         <h4>Skills</h4>
@@ -108,6 +110,65 @@
           {{/each}}
         </div>
       </div>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if (jjk-eq tab "attacks")}}
+  <section class="jjk-tab attacks">
+    {{> "systems/jjk-cursed-energy/templates/actor/parts/resources.hbs"}}
+    <p class="hint">Click an attack button and the system pays the CE, rolls against your target, rolls damage on a hit, tries a Black Flash on a crit, and updates your technique's resources. Target a token first (T). Shift-click to add a situational modifier.</p>
+    <h4>Strikes</h4>
+    <ol class="jjk-attacks">
+      {{#each attacks.strikes}}
+      <li class="jjk-attack" data-item-id="{{id}}">
+        <img src="{{img}}" alt=""><span class="name">{{name}}<small>{{sub}}</small></span>
+        <span class="maps">{{#each maps}}<a class="map" data-action="strike" data-map="{{@index}}" title="{{title}}">{{label}}</a>{{/each}}</span>
+        <span class="dmg">{{damage}}</span>
+      </li>
+      {{/each}}
+    </ol>
+    {{#if attacks.cursed.length}}
+    <h4>Cursed strikes</h4>
+    <ol class="jjk-attacks">
+      {{#each attacks.cursed}}
+      <li class="jjk-attack" data-item-id="{{id}}">
+        <img src="{{img}}" alt=""><span class="name">{{name}}<small>{{sub}}</small></span>
+        <span class="maps">{{#each maps}}<a class="map" data-action="technique" data-map="{{@index}}" title="{{title}}">{{label}}</a>{{/each}}</span>
+        <span class="dmg">{{damage}}</span>
+      </li>
+      {{/each}}
+    </ol>
+    {{/if}}
+    {{#if attacks.saves.length}}
+    <h4>Save effects <small>DC {{system.techniqueDC.value}}</small></h4>
+    <ol class="jjk-attacks">
+      {{#each attacks.saves}}
+      <li class="jjk-attack" data-item-id="{{id}}">
+        <img src="{{img}}" alt=""><span class="name">{{name}}<small>{{sub}}</small></span>
+        <span class="maps"><a class="map" data-action="technique" data-map="0" title="Pay, roll each target's save, roll damage">{{saveLabel}}</a></span>
+        <span class="dmg">{{damage}}</span>
+      </li>
+      {{/each}}
+    </ol>
+    {{/if}}
+    {{#if attacks.other.length}}
+    <h4>Other actions</h4>
+    <ol class="jjk-attacks">
+      {{#each attacks.other}}
+      <li class="jjk-attack" data-item-id="{{id}}">
+        <img src="{{img}}" alt=""><span class="name">{{name}}<small>{{sub}}</small></span>
+        <span class="maps"><a class="map" data-action="technique" data-map="0" title="Pay the cost and post the card">Use</a></span>
+        <span class="dmg">{{damage}}</span>
+      </li>
+      {{/each}}
+    </ol>
+    {{/if}}
+    <div class="jjk-attack-bar">
+      <a data-action="blackFlash" title="Roll a Black Flash flat check by hand">⚫ Black Flash</a>
+      <a data-action="focusedFlow" title="Focused Flow (+2 CE)">Focused Flow</a>
+      {{#if system.attributes.domainActive}}<a data-action="endDomain">End Domain</a>{{else}}<a data-action="openDomain">Open Domain</a>{{/if}}
+      <span class="hint">Composure {{system.attributes.composure}}/{{system.composureMax}} · CE {{system.attributes.ce.value}}/{{system.attributes.ce.max}}</span>
     </div>
   </section>
   {{/if}}

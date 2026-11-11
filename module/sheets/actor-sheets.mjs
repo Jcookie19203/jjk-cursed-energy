@@ -1,6 +1,8 @@
 import { SYSTEM_ID, GRADES, GRADE_ORDER, ABILITIES, SAVES, SKILLS, PROFICIENCY, VALUED_CONDITIONS, TOGGLE_CONDITIONS, ACTION_GLYPH, formatYen } from "../config.mjs";
 import { DOMAIN_AMPLIFY } from "./item-sheet.mjs";
 import { startSearch, searchCooldown, formatSpan, payMission } from "../shop.mjs";
+import { performStrike, performAbility, costRange } from "../actions.mjs";
+import * as resources from "../resources.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -69,7 +71,14 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       searchSupplier: JJKBaseActorSheet.#searchSupplier,
       domainPulse: JJKBaseActorSheet.#domainPulse,
       payActor: JJKBaseActorSheet.#payActor,
-      openShop: JJKBaseActorSheet.#openShop
+      openShop: JJKBaseActorSheet.#openShop,
+      strike: JJKBaseActorSheet.#strike,
+      technique: JJKBaseActorSheet.#technique,
+      resStep: JJKBaseActorSheet.#resStep,
+      resToggle: JJKBaseActorSheet.#resToggle,
+      resAdd: JJKBaseActorSheet.#resAdd,
+      resRemove: JJKBaseActorSheet.#resRemove,
+      resAddTargets: JJKBaseActorSheet.#resAddTargets
     }
   };
 
@@ -105,6 +114,57 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   static #domainPulse() { game.jjk.domain.pulseNow(this.document); }
   static #payActor() { payMission([this.document]); }
   static #openShop(event, target) { game.actors.get(target.dataset.shopId)?.sheet.render(true); }
+
+  /* ---------- Attacks tab ---------- */
+  static #strike(event, target) {
+    const id = target.closest("[data-item-id]")?.dataset.itemId;
+    const weapon = id && id !== "strike" ? this.document.items.get(id) : null;
+    performStrike(this.document, weapon, { map: Number(target.dataset.map) || 0, prompt: event.shiftKey });
+  }
+  static #technique(event, target) {
+    const item = this.document.items.get(target.closest("[data-item-id]").dataset.itemId);
+    if (item) performAbility(this.document, item, { map: Number(target.dataset.map) || 0, prompt: event.shiftKey });
+  }
+
+  /* ---------- technique resources (owner only) ---------- */
+  static #resKey(target) { return target.closest("[data-res-key]")?.dataset.resKey; }
+  static #resStep(event, target) {
+    const key = JJKBaseActorSheet.#resKey(target);
+    const uuid = target.closest("[data-target-uuid]")?.dataset.targetUuid ?? null;
+    resources.step(this.document, key, Number(target.dataset.delta), uuid);
+  }
+  static #resToggle(event, target) {
+    const key = JJKBaseActorSheet.#resKey(target);
+    resources.setValue(this.document, key, !(this.document.getFlag(SYSTEM_ID, "res")?.[key]));
+  }
+  static async #resAdd(event, target) {
+    const key = JJKBaseActorSheet.#resKey(target);
+    let name;
+    try {
+      name = await foundry.applications.api.DialogV2.prompt({
+        window: { title: "Add" }, content: '<div class="jjk-dialog"><div class="form-group"><label>Name</label><input type="text" name="n" autofocus></div></div>',
+        ok: { label: "Add", callback: (e, b) => b.form.elements.n.value.trim() }, rejectClose: false
+      });
+    } catch { return; }
+    if (!name) return;
+    const list = [...(this.document.getFlag(SYSTEM_ID, "res")?.[key] ?? []), name];
+    resources.setValue(this.document, key, list);
+  }
+  static #resRemove(event, target) {
+    const key = JJKBaseActorSheet.#resKey(target);
+    const res = foundry.utils.deepClone(this.document.getFlag(SYSTEM_ID, "res") ?? {});
+    const uuid = target.closest("[data-target-uuid]")?.dataset.targetUuid;
+    if (uuid) return resources.removeTarget(this.document, key, uuid);
+    const list = [...(res[key] ?? [])];
+    list.splice(Number(target.dataset.index), 1);
+    resources.setValue(this.document, key, list);
+  }
+  static #resAddTargets(event, target) {
+    const key = JJKBaseActorSheet.#resKey(target);
+    const docs = [...game.user.targets].map(t => t.actor).filter(Boolean);
+    if (!docs.length) return ui.notifications.warn("Target one or more tokens first (T).");
+    resources.trackTargets(this.document, key, docs);
+  }
 
   static #tab(event, target) {
     this.tabGroups[target.dataset.group ?? "primary"] = target.dataset.tab;
@@ -181,7 +241,41 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     context.gear = items.filter(i => i.type === "gear");
     context.vows = items.filter(i => i.type === "vow");
     context.origins = items.filter(i => i.type === "ancestry" || i.type === "background");
+    context.resources = resources.sheetContext(actor);
+    if (context.tab === "attacks") context.attacks = this.#prepareAttacks(items, abilities);
     return context;
+  }
+
+  /** Attacks tab: Strikes (with MAP buttons), cursed strikes, save effects, other actions. */
+  #prepareAttacks(items, abilities) {
+    const actor = this.document;
+    const s = actor.system;
+    const atk = s.cursedAttack.value;
+    const maps = (base, agile) => [0, agile ? 4 : 5, agile ? 8 : 10].map((p, i) => ({
+      label: signed(base - p), title: ["First attack", "Second attack (MAP)", "Third+ attack (MAP)"][i]
+    }));
+    const die = s.techniqueDie;
+    const strikes = [{ id: "strike", name: "Reinforced Strike", img: "icons/skills/melee/unarmed-punch-fist.webp", sub: "unarmed", maps: maps(atk, false), damage: s.strike?.formula ?? "" }];
+    for (const w of items.filter(i => i.type === "weapon")) {
+      const agile = /\bagile\b/i.test(w.system.traits ?? "");
+      const base = Number.isFinite(w.system.attackOverride) ? w.system.attackOverride : atk + (w.system.bonus ?? 0);
+      const dmg = w.system.formula || `${s.strike?.count ?? 2}${w.system.dieSize} + ${(s.keyMod ?? 0) + (w.system.bonus ?? 0)}`;
+      strikes.push({ id: w.id, name: w.name, img: w.img, sub: [w.system.range, w.system.traits].filter(Boolean).join(" · "), maps: maps(base, agile),
+        damage: `${dmg} ${w.system.damageType}${w.system.charge ? ` + ${w.system.charge}${die} charge` : ""}` });
+    }
+    const row = i => {
+      const r = costRange(actor, i);
+      const cost = r.fixed ? (r.min ? `${r.min} CE` : "") : `${r.min}–${r.max} CE`;
+      return { id: i.id, name: i.name, img: i.img, sub: [ACTION_GLYPH[i.system.actions] ?? "", cost, i.system.range].filter(Boolean).join(" · "),
+        damage: i.system.usesOutput ? `CE × ${die} + ${s.keyMod}` : "" };
+    };
+    const usable = abilities.filter(i => !["passive", "none"].includes(i.system.actions) || i.system.resolution !== "none" || i.system.isDomain);
+    return {
+      strikes,
+      cursed: usable.filter(i => i.system.resolution === "attack").map(i => ({ ...row(i), maps: maps(atk, /\bagile\b/i.test(i.system.traits)) })),
+      saves: usable.filter(i => i.system.resolution === "save").map(i => ({ ...row(i), saveLabel: `${SAVES[i.system.save].label}${i.system.basicSave ? " (basic)" : ""}` })),
+      other: usable.filter(i => i.system.resolution === "none").map(row)
+    };
   }
 
   /* ---------- actions (this = sheet) ---------- */
@@ -191,7 +285,13 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   static #rollAttack(event) { this.document.rollCursedAttack("Reinforced Strike", { prompt: !event.shiftKey }); }
   static #rollStrikeDamage() { this.document.rollStrikeDamage(); }
   static #rollOutput() { this.document.rollOutputDamage(); }
-  static #itemUse(event, target) { this.document.items.get(target.closest("[data-item-id]").dataset.itemId)?.use(); }
+  static #itemUse(event, target) {
+    const item = this.document.items.get(target.closest("[data-item-id]").dataset.itemId);
+    if (!item) return;
+    // Technique cards run the full automated action; shift-click just posts the card.
+    if (item.type === "ability" && !event.shiftKey) return performAbility(this.document, item);
+    item.use();
+  }
   static #itemEdit(event, target) { this.document.items.get(target.closest("[data-item-id]").dataset.itemId)?.sheet.render(true); }
   static async #itemDelete(event, target) {
     const item = this.document.items.get(target.closest("[data-item-id]").dataset.itemId);

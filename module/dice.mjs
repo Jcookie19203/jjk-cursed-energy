@@ -48,8 +48,8 @@ async function promptCheck({ title, isAttack }) {
  * @param {boolean} [o.prompt] Show the modifier dialog (shift-click skips it).
  * @param {object} [o.flags]   Extra message flags.
  */
-export async function rollCheck({ actor, label, modifier, isAttack = false, dc = null, prompt = true, flags = {}, dcLabel = "" }) {
-  let opts = { map: 0, agile: false, bonus: 0, dc: null };
+export async function rollCheck({ actor, label, modifier, isAttack = false, dc = null, prompt = true, flags = {}, dcLabel = "", map = 0, agile = false }) {
+  let opts = { map, agile, bonus: 0, dc: null };
   if (prompt) {
     const r = await promptCheck({ title: label, isAttack });
     if (!r) return null;

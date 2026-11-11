@@ -25,14 +25,24 @@ export class JJKItem extends Item {
   }
 
   /** Post this item to chat with roll buttons. */
-  async use() {
+  /**
+   * @param {object} [o]
+   * @param {number} [o.spent]  Set when an automated action already paid: the card then shows what was paid
+   *                            and drops the manual Pay / roll buttons (the action rolls those itself).
+   */
+  async use({ spent = null, borrowed = 0 } = {}) {
     const actor = this.actor;
     const s = this.system;
+    const auto = spent !== null;
     const enriched = await TextEditorImpl().enrichHTML(s.description ?? "", { relativeTo: this, secrets: this.isOwner });
     const buttons = [];
     let meta = "";
 
-    if (this.type === "ability") {
+    if (this.type === "ability" && auto) {
+      const glyph = ACTION_GLYPH[s.actions] ?? "";
+      const paid = `${spent} CE${borrowed ? ` (${borrowed} borrowed)` : ""}`;
+      meta = [glyph, paid, s.range, s.pressure ? `Pressure +${s.pressure}` : ""].filter(Boolean).map(esc).join(" · ");
+    } else if (this.type === "ability") {
       const glyph = ACTION_GLYPH[s.actions] ?? "";
       meta = [glyph, s.costText || (s.ce !== null ? `${s.ce} CE` : ""), s.range, s.pressure ? `Pressure +${s.pressure}` : ""].filter(Boolean).map(esc).join(" · ");
       if (s.ce || s.allPool) buttons.push(`<button type="button" data-jjk-action="payCE" data-ce="${s.allPool ? -1 : s.ce}">${s.allPool ? "Spend all CE" : `Pay ${s.ce} CE`}</button>`);

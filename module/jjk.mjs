@@ -13,12 +13,15 @@ import * as shop from "./shop.mjs";
 import * as domain from "./domain.mjs";
 import { registerChatHooks, registerCombatHooks } from "./chat.mjs";
 import * as dice from "./dice.mjs";
+import { registerDomainStyle } from "./domain-style.mjs";
+import * as actions from "./actions.mjs";
+import * as resources from "./resources.mjs";
 
 const { SYSTEM_ID } = JJK;
 
 Hooks.once("init", () => {
   console.log(`${SYSTEM_ID} | Initializing Cursed Energy`);
-  game.jjk = { config: JJK, dice, shop, domain };
+  game.jjk = { config: JJK, dice, shop, domain, actions, resources };
 
   CONFIG.Actor.documentClass = JJKActor;
   CONFIG.Item.documentClass = JJKItem;
@@ -78,7 +81,8 @@ Hooks.once("init", () => {
     `systems/${SYSTEM_ID}/templates/actor/sorcerer-sheet.hbs`,
     `systems/${SYSTEM_ID}/templates/actor/curse-sheet.hbs`,
     `systems/${SYSTEM_ID}/templates/actor/shop-sheet.hbs`,
-    `systems/${SYSTEM_ID}/templates/item/item-sheet.hbs`
+    `systems/${SYSTEM_ID}/templates/item/item-sheet.hbs`,
+    `systems/${SYSTEM_ID}/templates/actor/parts/resources.hbs`
   ]);
 
   registerChatHooks();
@@ -87,6 +91,9 @@ Hooks.once("init", () => {
   registerCombatHooks();
   shop.registerShops();
   domain.registerDomains();
+  registerDomainStyle();
+  actions.registerActions();
+  resources.registerResources();
 });
 
 Hooks.once("ready", () => console.log(`${SYSTEM_ID} | Ready.`));
@@ -97,7 +104,9 @@ Hooks.on("hotbarDrop", (bar, data, slot) => {
   (async () => {
     const item = await fromUuid(data.uuid);
     if (!item?.actor) return;
-    const command = `const item = await fromUuid("${item.uuid}"); item?.use();`;
+    const command = item.type === "ability"
+      ? `const item = await fromUuid("${item.uuid}"); if (item) game.jjk.actions.performAbility(item.actor, item);`
+      : `const item = await fromUuid("${item.uuid}"); item?.use();`;
     let macro = game.macros.find(m => m.name === item.name && m.command === command);
     if (!macro) macro = await Macro.create({ name: item.name, type: "script", img: item.img, command });
     game.user.assignHotbarMacro(macro, slot);

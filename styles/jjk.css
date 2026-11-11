@@ -154,3 +154,72 @@
 .jjk-chat.jjk-shop-msg ul { margin: 4px 0; padding-left: 18px; }
 /* Core item icons are white SVGs; give them a dark tile so they show on light sheets. */
 .jjk .jjk-stock .jjk-item img, .jjk [data-sell-id] img { background: var(--jjk-accent); border-radius: 4px; padding: 2px; }
+
+/* ---------- Domain Expansion: themed splash, banner and chat (v0.4.0) ---------- */
+.jjk-domain-splash { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; cursor: pointer; overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, var(--dom-mid) 0%, var(--dom-bg) 70%); animation: jjk-dom-in 0.9s cubic-bezier(.2,.8,.2,1) both; }
+.jjk-domain-splash .dom-motif { position: absolute; inset: -20%; background: var(--dom-motif) repeat; background-size: 220px; opacity: 0.18;
+  filter: drop-shadow(0 0 6px var(--dom-accent)); mix-blend-mode: screen; animation: jjk-dom-drift 6s linear both; }
+.jjk-domain-splash .dom-ring { position: absolute; width: 140vmin; height: 140vmin; border-radius: 50%; border: 0.6vmin solid var(--dom-accent);
+  box-shadow: 0 0 6vmin var(--dom-accent), inset 0 0 6vmin var(--dom-accent); animation: jjk-dom-ring 1.1s cubic-bezier(.7,0,.3,1) both; }
+.jjk-domain-splash .dom-text { position: relative; text-align: center; color: #fff; text-shadow: 0 0 2vmin var(--dom-accent), 0 0 0.4vmin #000; }
+.jjk-domain-splash .dom-kanji { font-size: 13vmin; font-weight: 900; letter-spacing: 1vmin; color: var(--dom-accent); line-height: 1;
+  font-family: "Noto Serif JP", "Yu Mincho", "MS Mincho", serif; animation: jjk-dom-kanji 1s 0.5s both; }
+.jjk-domain-splash .dom-label { font-size: 2.4vmin; letter-spacing: 1.2vmin; text-transform: uppercase; opacity: 0.85; margin-top: 1.5vmin; animation: jjk-dom-up 0.6s 0.9s both; }
+.jjk-domain-splash .dom-name { font-size: 7vmin; font-weight: 800; font-family: "Modesto Condensed", "Signika", serif; margin-top: 1vmin; animation: jjk-dom-up 0.7s 1.05s both; }
+.jjk-domain-splash .dom-caster { font-size: 2.2vmin; opacity: 0.75; margin-top: 1vmin; animation: jjk-dom-up 0.6s 1.3s both; }
+.jjk-domain-splash.out { animation: jjk-dom-out 0.8s ease-in forwards; }
+@keyframes jjk-dom-in { from { clip-path: circle(0% at 50% 50%); } to { clip-path: circle(75% at 50% 50%); } }
+@keyframes jjk-dom-out { to { opacity: 0; transform: scale(1.06); } }
+@keyframes jjk-dom-ring { from { transform: scale(0.05); opacity: 0; } 60% { opacity: 1; } to { transform: scale(1); opacity: 0.55; } }
+@keyframes jjk-dom-drift { from { transform: rotate(0deg) scale(1.1); } to { transform: rotate(8deg) scale(1); } }
+@keyframes jjk-dom-kanji { from { opacity: 0; transform: scale(1.8); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes jjk-dom-up { from { opacity: 0; transform: translateY(2vmin); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .jjk-domain-splash, .jjk-domain-splash * { animation-duration: 0.01s !important; } }
+
+.jjk-chat.jjk-domain.themed { background: linear-gradient(160deg, var(--dom-bg), var(--dom-mid)); color: #eee; border: 1px solid var(--dom-accent);
+  border-radius: 6px; padding: 6px 8px; position: relative; overflow: hidden; box-shadow: 0 0 10px -2px var(--dom-accent); }
+.jjk-chat.jjk-domain.themed::before { content: ""; position: absolute; inset: 0; background: var(--dom-motif) repeat; background-size: 120px; opacity: 0.1; pointer-events: none; }
+.jjk-chat.jjk-domain.themed > * { position: relative; }
+.jjk-chat.jjk-domain.themed h3, .jjk-chat.jjk-domain.themed strong { color: var(--dom-accent); }
+.jjk-chat.jjk-domain.themed .jjk-sub { color: #ccc; }
+.jjk-chat.jjk-domain.themed button { background: rgba(0,0,0,0.35); color: #fff; border: 1px solid var(--dom-accent); }
+.jjk-domain-banner { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 6px 0 8px; margin-bottom: 6px; border-bottom: 1px solid var(--dom-accent); }
+.jjk-domain-banner .kanji { font-size: 26px; font-weight: 900; color: var(--dom-accent); letter-spacing: 4px; text-shadow: 0 0 8px var(--dom-accent); font-family: "Noto Serif JP", "Yu Mincho", serif; }
+.jjk-domain-banner .label { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; opacity: 0.8; }
+.jjk-domain-banner .name { font-size: 18px; font-weight: 800; color: #fff; }
+.jjk-domain-banner .caster { font-size: 11px; opacity: 0.7; }
+
+/* ---------- Attacks tab (v0.4.0) ---------- */
+.jjk .jjk-attacks { list-style: none; margin: 0 0 8px; padding: 0; }
+.jjk .jjk-attack { display: grid; grid-template-columns: 28px 1fr auto minmax(90px, auto); gap: 8px; align-items: center; padding: 4px 2px; border-bottom: 1px dotted var(--jjk-line); }
+.jjk .jjk-attack img { width: 28px; height: 28px; border: 0; }
+.jjk .jjk-attack .name { font-weight: bold; display: flex; flex-direction: column; }
+.jjk .jjk-attack .name small { font-weight: normal; opacity: 0.7; }
+.jjk .jjk-attack .maps { display: flex; gap: 3px; }
+.jjk .jjk-attack .map { min-width: 2.8em; text-align: center; padding: 3px 6px; border-radius: 4px; background: var(--jjk-accent); color: #fff; font-weight: bold; }
+.jjk .jjk-attack .map:nth-child(2) { opacity: 0.85; }
+.jjk .jjk-attack .map:nth-child(3) { opacity: 0.7; }
+.jjk .jjk-attack .map:hover { filter: brightness(1.2); text-shadow: 0 0 4px #fff; }
+.jjk .jjk-attack .dmg { font-size: 0.85em; opacity: 0.8; text-align: right; }
+.jjk .jjk-attack-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; padding-top: 6px; border-top: 2px solid var(--jjk-accent); }
+
+/* ---------- Technique resources (owner-only) ---------- */
+.jjk .jjk-res-panel { margin: 6px 0 10px; padding: 6px 8px; border: 1px solid var(--jjk-accent); border-radius: 6px; background: rgba(91, 42, 134, 0.06); }
+.jjk .jjk-res-panel h4 { margin: 0 0 4px; display: flex; justify-content: space-between; }
+.jjk .jjk-res-panel .lock { font-weight: normal; opacity: 0.6; font-size: 0.8em; }
+.jjk .jjk-res { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 2px 0; border-bottom: 1px dotted var(--jjk-line); }
+.jjk .jjk-res .lbl { flex: 1; min-width: 7em; }
+.jjk .jjk-res .max { opacity: 0.6; }
+.jjk .jjk-res .bar { width: 60px; height: 6px; background: #0002; border-radius: 3px; overflow: hidden; }
+.jjk .jjk-res .bar span { display: block; height: 100%; background: var(--jjk-accent); }
+.jjk .jjk-res .toggle { padding: 1px 8px; border-radius: 10px; border: 1px solid var(--jjk-line); }
+.jjk .jjk-res .toggle.on { background: var(--jjk-accent); color: #fff; }
+.jjk .jjk-res .chip { display: inline-block; padding: 0 6px; margin: 1px; border-radius: 10px; background: #0001; }
+.jjk .jjk-res.kind-target { flex-direction: column; align-items: stretch; }
+.jjk .jjk-res.kind-target .entries { list-style: none; margin: 0; padding: 0 0 0 10px; }
+.jjk .jjk-res.kind-target .entries li { display: flex; gap: 6px; align-items: center; }
+.jjk .jjk-res.kind-target .entries li > span:first-child { flex: 1; }
+.jjk-targets .jjk-target-row { display: flex; gap: 6px; align-items: center; padding: 2px 0; }
+.jjk-targets .jjk-target-row span { flex: 1; }
+.jjk-targets .jjk-target-row button { flex: 0 0 auto; width: auto; padding: 0 8px; line-height: 20px; }

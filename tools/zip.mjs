@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = path.join(ROOT, "dist");
 const STAGE = path.join(DIST, "jjk-cursed-energy");
-const INCLUDE = ["system.json", "LICENSE.md", "README.md", "module", "templates", "styles", "lang", "packs"];
+const INCLUDE = ["system.json", "LICENSE.md", "README.md", "module", "templates", "styles", "lang", "packs", "assets"];
 
 // Empty dist/ rather than deleting it, so a shell sitting inside it doesn't lock the build.
 fs.mkdirSync(DIST, { recursive: true });

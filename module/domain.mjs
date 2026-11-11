@@ -11,6 +11,7 @@
  */
 import { SYSTEM_ID, GRADES, VALUED_CONDITIONS, TOGGLE_CONDITIONS } from "./config.mjs";
 import { request, refusal, gmHandlers } from "./shop.mjs";
+import { themeFor, themeStyle, themedHeader, broadcastSplash, drawStyledBarrier, shortName } from "./domain-style.mjs";
 
 const { DialogV2 } = foundry.applications.api;
 const esc = s => foundry.utils.escapeHTML?.(String(s)) ?? String(s);
@@ -214,16 +215,23 @@ async function doOpen(msg) {
     barrierHP: barrierMax, barrierMax, hardness: cfg.hardness ?? (actor.system.reinforcement ?? 0) * 2,
     damage: sureHitFormula(actor, cfg), damageType: cfg.damageType ?? "", conditions: cfg.conditions ?? "",
     effect: cfg.effect ?? "", amplify: cfg.amplify ?? "half", dc: actor.system.techniqueDC?.value ?? 20, rank,
-    regionId: null, spent: ce.value
+    regionId: null, drawingId: null, spent: ce.value
   };
+  st.incomplete = /incomplete/i.test(src.item?.name ?? "");
+  st.theme = themeFor({ technique: st.technique || actor.system.techniqueName || "", name: st.name });
   await actor.update({ "system.attributes.ce.value": 0, "system.attributes.domainActive": true });
-  if (st.sceneId) st.regionId = await drawBarrier(game.scenes.get(st.sceneId), st, actor.hasPlayerOwner ? "#5b2a86" : "#8a1c1c");
+  if (st.sceneId) {
+    const scene = game.scenes.get(st.sceneId);
+    st.regionId = await drawBarrier(scene, st, st.theme.accent);
+    st.drawingId = await drawStyledBarrier(scene, st, st.theme);
+  }
   await actor.setFlag(SYSTEM_ID, "domain", st);
+  broadcastSplash({ name: shortName(st.name), caster: actor.name, theme: st.theme, incomplete: st.incomplete });
 
   const where = st.sceneId ? `a ${radius}-ft burst` : `${st.targetUuids.length} targeted creature(s) (no token on the map)`;
   await ChatMessage.create({
     speaker: ChatMessage.getSpeaker({ actor }),
-    content: `<div class="jjk-chat jjk-domain"><h3>DOMAIN EXPANSION: ${esc(st.name.replace(/^Domain Expansion:\s*/i, ""))}</h3>
+    content: `<div class="jjk-chat jjk-domain themed" style="${themeStyle(st.theme)}">${themedHeader(st.theme, shortName(st.name), actor.name, st.incomplete)}
       <p>${esc(actor.name)} pours <strong>${st.spent} CE</strong> into ${where}. The barrier is sealed: nobody leaves by normal movement.</p>
       <p class="jjk-sub">Sure hit on the slam and at the start of each of ${esc(actor.name)}'s turns for ${st.pulsesLeft} more round${st.pulsesLeft === 1 ? "" : "s"}.
       ${st.damage ? `Damage ${esc(st.damage)}${st.damageType ? ` ${esc(st.damageType)}` : ""}.` : ""} ${st.conditions ? `Conditions: ${esc(st.conditions)}.` : ""}
@@ -318,7 +326,7 @@ async function pulse(actor, { slam = false } = {}) {
   const left = st.pulsesLeft;
   await ChatMessage.create({
     speaker: ChatMessage.getSpeaker({ actor }),
-    content: `<div class="jjk-chat jjk-domain"><h3>${slam ? "Sure hit: the barrier closes" : "Sure hit"}</h3>
+    content: `<div class="jjk-chat jjk-domain themed" style="${themeStyle(st.theme ?? themeFor(st))}"><h3>${slam ? "Sure hit: the barrier closes" : "Sure hit"}</h3>
       ${st.effect ? `<p class="jjk-sub">${esc(st.effect)}</p>` : ""}
       ${roll ? await roll.render() : ""}
       <ul class="jjk-domain-hits">${list}</ul>
@@ -336,11 +344,12 @@ export async function collapse(actor, reason = "collapses") {
     return;
   }
   if (st.regionId) await game.scenes.get(st.sceneId)?.regions?.get(st.regionId)?.delete().catch(() => null);
+  if (st.drawingId) await game.scenes.get(st.sceneId)?.drawings?.get(st.drawingId)?.delete().catch(() => null);
   await actor.update({
     "system.attributes.domainActive": false, "system.attributes.ce.value": 0, "system.conditions.fatigued": true,
     [`flags.${SYSTEM_ID}.burnedOut`]: true, [`flags.${SYSTEM_ID}.-=domain`]: null
   });
-  await ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor }), content: `<div class="jjk-chat jjk-domain"><strong>${esc(st.name)} ${esc(reason)}.</strong> ${esc(actor.name)} is fatigued at 0 CE until they Reset.</div>` });
+  await ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor }), content: `<div class="jjk-chat jjk-domain themed" style="${themeStyle(st.theme ?? themeFor(st))}"><strong>${esc(shortName(st.name))} ${esc(reason)}.</strong> ${esc(actor.name)} is fatigued at 0 CE until they Reset.</div>` });
 }
 
 async function doEnd(msg) {
@@ -363,7 +372,7 @@ async function doBarrier(msg) {
   await actor.setFlag(SYSTEM_ID, "domain.barrierHP", hp);
   await ChatMessage.create({
     speaker: { alias: game.users.get(user.id)?.name ?? "Barrier" },
-    content: `<div class="jjk-chat jjk-domain">The barrier takes <strong>${through}</strong> (${Math.round(msg.amount)} − Hardness ${st.hardness}). Barrier HP <strong>${hp}/${st.barrierMax}</strong>.</div>`
+    content: `<div class="jjk-chat jjk-domain themed" style="${themeStyle(st.theme ?? themeFor(st))}">The barrier takes <strong>${through}</strong> (${Math.round(msg.amount)} − Hardness ${st.hardness}). Barrier HP <strong>${hp}/${st.barrierMax}</strong>.</div>`
   });
   if (hp <= 0) await collapse(actor, "shatters: the barrier was broken from inside");
 }
