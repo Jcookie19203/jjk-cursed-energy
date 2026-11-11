@@ -409,11 +409,55 @@ function whisper(actor, text) {
 
 export async function chatAction() {}
 
+/* ---------- afflictions (Cursed Venom, Cursed Plague) ---------- */
+
+/** Afflictions tracked on someone's sheet: resource key → label and damage type. */
+const AFFLICTIONS = { cursedVenom: { label: "Cursed Venom", type: "poison" }, cursedPlague: { label: "Cursed Plague", type: "disease" } };
+
+/**
+ * Start of an afflicted creature's turn: for each sorcerer tracking an affliction on it, the creature rolls Fortitude
+ * vs that sorcerer's Technique DC; failure advances a stage (max 4), success drops one (below 1 it ends). Then it takes
+ * the sorcerer's technique die × the stage and is sickened half the stage (min 1). Runs on the active GM.
+ */
+async function tickAfflictions(target) {
+  const key = tk(target.uuid);
+  const sources = game.actors.filter(a => a.type === "sorcerer" && Object.keys(AFFLICTIONS).some(k => a.getFlag(SYSTEM_ID, "res")?.[k]?.[key]));
+  for (const owner of sources) {
+    const res = store(owner);
+    for (const [resKey, aff] of Object.entries(AFFLICTIONS)) {
+      const entry = res[resKey]?.[key];
+      if (!entry || !(entry.value > 0)) continue;
+      const dc = owner.system.techniqueDC?.value ?? 15;
+      const r = await target.rollSave("fortitude", { dc, prompt: false, dcLabel: `${aff.label} (${owner.name})` });
+      const degree = r?.degree ?? 1;
+      const before = entry.value;
+      entry.value = Math.max(0, Math.min(4, before + (degree >= 2 ? -1 : 1)));
+      if (entry.value < 1) {
+        delete res[resKey][key];
+        await save(owner, res);
+        whisper(owner, `${target.name} shakes off ${aff.label}.`);
+        continue;
+      }
+      await save(owner, res);
+      const roll = await new Roll(`${entry.value}${owner.system.techniqueDie}`).evaluate();
+      await target.applyDamage(roll.total, { reinforce: false });
+      const sick = Math.max(1, Math.floor(entry.value / 2));
+      if ((target.system.conditions?.sickened ?? 0) < sick) await target.update({ "system.conditions.sickened": sick });
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: target }), rolls: [roll], whisper: whisperIds(owner),
+        content: `<div class="jjk-chat jjk-res-note"><strong>${esc(aff.label)}</strong>: ${esc(target.name)} ${entry.value > before ? "worsens" : "eases"} to stage <strong>${entry.value}</strong>, takes <strong>${roll.total}</strong> ${aff.type} damage (${entry.value}${owner.system.techniqueDie}) and is sickened ${sick}.</div>`
+      });
+    }
+  }
+}
+
 export function registerResources() {
   Hooks.on("updateCombat", async (combat, changed) => {
     if (!isActiveGM() || (!("turn" in changed) && !("round" in changed))) return;
     const actor = combat.combatant?.actor;
-    if (actor) await startOfTurn(actor);
+    if (!actor) return;
+    await startOfTurn(actor);
+    await tickAfflictions(actor);
   });
   Hooks.on("deleteCombat", async combat => {
     if (!isActiveGM()) return;

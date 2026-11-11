@@ -224,3 +224,8 @@
 .jjk-targets .jjk-target-row { display: flex; gap: 6px; align-items: center; padding: 2px 0; }
 .jjk-targets .jjk-target-row span { flex: 1; }
 .jjk-targets .jjk-target-row button { flex: 0 0 auto; width: auto; padding: 0 8px; line-height: 20px; }
+
+/* Condition buttons on results (v0.6.0) */
+.jjk-targets .jjk-cond { background: #5b2a8622; border: 1px solid #5b2a86; border-radius: 10px; font-size: 0.85em; }
+.jjk-targets .jjk-cond.applied { background: #5b2a86; color: #fff; }
+.jjk-targets .jjk-target-row { flex-wrap: wrap; }

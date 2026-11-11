@@ -249,7 +249,7 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     context.isCurse = actor.type === "curse";
     if (context.tab === "attacks") {
       // A curse's actions are read from its stat block the first time the GM opens this tab.
-      if (context.isCurse && game.user.isGM && !actor.getFlag(SYSTEM_ID, "statBlockRead") && !this._readingStatBlock) {
+      if (context.isCurse && game.user.isGM && !((actor.getFlag(SYSTEM_ID, "statBlockRead") ?? 0) >= 2) && !this._readingStatBlock) {
         this._readingStatBlock = true;
         importStatBlock(actor, { notify: false }).finally(() => { this._readingStatBlock = false; });
       }

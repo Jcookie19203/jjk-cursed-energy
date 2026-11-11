@@ -13,6 +13,7 @@ import { SYSTEM_ID, SAVES, degreeOfSuccess, DEGREE_LABELS } from "./config.mjs";
 import { rollCheck, rollFlat } from "./dice.mjs";
 import { request, gmHandlers, refusal } from "./shop.mjs";
 import { resourceHooks } from "./resources.mjs";
+import { extractConditions, conditionsFor, applyCondition } from "./conditions.mjs";
 
 const { DialogV2 } = foundry.applications.api;
 const esc = s => foundry.utils.escapeHTML?.(String(s)) ?? String(s);
@@ -65,8 +66,24 @@ const userTargets = () => [...game.user.targets].map(t => t.actor).filter(Boolea
 
 /* ---------- damage ---------- */
 
+/** "Apply frightened 1" buttons for one target. */
+function condButtons(t, conds) {
+  return (conds ?? []).map(c => `<button type="button" class="jjk-cond" data-jjk-action="applyCond" data-target-uuid="${t.uuid}" data-key="${c.key}" data-value="${c.value}" title="Apply to ${esc(t.name)}">${esc(c.label)}</button>`).join("");
+}
+
+/** A results card for effects without damage: each target's result and its condition buttons. */
+async function postEffects({ actor, label, targets, resultOf, condsOf, note = "" }) {
+  const rows = targets.map(t => {
+    const conds = condsOf(t);
+    return `<div class="jjk-target-row"><span>${esc(t.name)} <em>${esc(resultOf(t))}</em></span>${conds.length ? condButtons(t, conds) : '<span class="hint">no effect</span>'}</div>`;
+  }).join("");
+  if (!rows) return;
+  await ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor }), flags: { [SYSTEM_ID]: { actorUuid: actor.uuid } },
+    content: `<div class="jjk-chat jjk-effects"><header><h3>${esc(label)}</h3></header>${note ? `<div class="jjk-sub">${note}</div>` : ""}<div class="jjk-targets">${rows}</div></div>` });
+}
+
 /** Roll damage and post one card with an Apply row per target (or generic Apply buttons with no targets). */
-async function postDamage({ actor, label, formula, crit = false, bf = false, damageType = "", targets = [], perTarget = null, note = "" }) {
+async function postDamage({ actor, label, formula, crit = false, bf = false, damageType = "", targets = [], perTarget = null, note = "", condsOf = null }) {
   const roll = await new Roll(formula).evaluate({ maximize: bf });
   const doubled = crit || bf;
   const total = doubled ? roll.total * 2 : roll.total;
@@ -78,7 +95,7 @@ async function postDamage({ actor, label, formula, crit = false, bf = false, dam
       return `<div class="jjk-target-row"><span>${esc(t.name)}${perTarget?.label ? ` <em>${esc(perTarget.label(t))}</em>` : ""}</span>
         <strong>${amt}</strong>
         <button type="button" data-jjk-action="applyTo" data-target-uuid="${t.uuid}" data-amount="${amt}">Apply</button>
-        <button type="button" data-jjk-action="applyTo" data-target-uuid="${t.uuid}" data-amount="${Math.floor(amt / 2)}">½</button></div>`;
+        <button type="button" data-jjk-action="applyTo" data-target-uuid="${t.uuid}" data-amount="${Math.floor(amt / 2)}">½</button>${condsOf ? condButtons(t, condsOf(t)) : ""}</div>`;
     }).join("");
   }
   const content = `<div class="jjk-chat jjk-damage"><header><h3>${esc(label)}</h3></header>
@@ -120,7 +137,10 @@ export async function performStrike(actor, weapon = null, { map = 0, prompt = fa
     formula = `${count}${die} + ${(s.keyMod ?? 0) + (weapon?.system?.bonus ?? 0)}`;
   }
   const name = weapon?.name ?? "Reinforced Strike";
-  await postDamage({ actor, label: name, formula, crit, bf, damageType: weapon?.system?.damageType ?? "bludgeoning", targets: targets.slice(0, 1) });
+  const conds = extractConditions(weapon?.system?.description ?? "", "attack");
+  const hitKey = crit ? "crit" : "hit";
+  await postDamage({ actor, label: name, formula, crit, bf, damageType: weapon?.system?.damageType ?? "bludgeoning", targets: targets.slice(0, 1),
+    condsOf: conds.length ? () => conditionsFor(conds, hitKey) : null });
   const charge = weapon?.system?.charge ?? 0;
   if (charge > 0) {
     await postDamage({ actor, label: `${name}: stored charge`, formula: `${charge}${s.techniqueDie}`, crit, bf, targets: targets.slice(0, 1) });
@@ -167,15 +187,20 @@ export async function performAbility(actor, item, { map = 0, prompt = false } = 
   const hasDamage = !!fixed || (s.usesOutput && dice + extraDice > 0);
   const outputFormula = () => fixed || `${Math.max(0, dice + extraDice)}${die} + ${keyMod}`;
   const damageType = s.damageType ?? "";
+  const conds = extractConditions(s.description ?? "", s.resolution);
 
   // 3. Resolve.
   if (s.resolution === "attack") {
     const r = await actor.rollCursedAttack(item.name, { prompt, map, agile: /\bagile\b/i.test(s.traits), flags: { auto: true } });
     if (!r) return;
     const hit = r.degree === null || r.degree >= 2;
+    const hitKey = r.degree === 3 ? "crit" : "hit";
+    const condsOf = conds.length ? () => conditionsFor(conds, hitKey) : null;
     if (hit && hasDamage) {
       const bf = await tryBlackFlash(actor, r.degree);
-      await postDamage({ actor, label: item.name, formula: outputFormula(), crit: r.degree === 3, bf, damageType, targets: targets.slice(0, 1) });
+      await postDamage({ actor, label: item.name, formula: outputFormula(), crit: r.degree === 3, bf, damageType, targets: targets.slice(0, 1), condsOf });
+    } else if (hit && condsOf && targets.length) {
+      await postEffects({ actor, label: item.name, targets: targets.slice(0, 1), resultOf: () => (r.degree === 3 ? "Critical hit" : "Hit"), condsOf });
     }
     await hook?.after?.(actor, item, { spend, borrowed, form, targets, degree: r.degree, hit });
     return;
@@ -194,7 +219,12 @@ export async function performAbility(actor, item, { map = 0, prompt = false } = 
         (t, total) => { const dg = degrees.get(t.uuid) ?? 1; return s.basicSave ? Math.floor(total * BASIC[dg]) : (s.damageAlways || dg <= 1 ? total : 0); },
         { label: t => DEGREE_LABELS[degrees.get(t.uuid) ?? 1] });
       await postDamage({ actor, label: item.name, formula: outputFormula(), damageType, targets, perTarget: targets.length ? perTarget : null,
+        condsOf: conds.length ? t => conditionsFor(conds, degrees.get(t.uuid) ?? 1) : null,
         note: `${s.basicSave ? "Basic " : ""}${SAVES[s.save].label} save vs DC ${dc}${s.basicSave ? "" : s.damageAlways ? " (damage either way)" : " (damage on a failure)"}.` });
+    }
+    if (!hasDamage && conds.length && targets.length) {
+      await postEffects({ actor, label: item.name, targets, resultOf: t => DEGREE_LABELS[degrees.get(t.uuid) ?? 1],
+        condsOf: t => conditionsFor(conds, degrees.get(t.uuid) ?? 1), note: `${SAVES[s.save].label} save vs DC ${dc}.` });
     }
     await hook?.after?.(actor, item, { spend, borrowed, form, targets, degrees });
     return;
@@ -220,7 +250,21 @@ export async function applyTo(targetUuid, amount) {
   return request("applyDamageTo", { targetUuid, amount });
 }
 
+export async function applyCondTo(targetUuid, key, value) {
+  const doc = await fromUuid(targetUuid);
+  const target = doc?.actor ?? doc;
+  if (!target) return ui.notifications.warn("That target is gone.");
+  if (target.isOwner) return applyCondition(target, key, Number(value) || 1);
+  return request("applyConditionTo", { targetUuid, key, value: Number(value) || 1 });
+}
+
 export function registerActions() {
+  gmHandlers.applyConditionTo = async msg => {
+    const doc = await fromUuid(msg.targetUuid);
+    const target = doc?.actor ?? doc;
+    if (!target) throw refusal("That target is gone.");
+    await applyCondition(target, msg.key, msg.value);
+  };
   gmHandlers.applyDamageTo = async msg => {
     const doc = await fromUuid(msg.targetUuid);
     const target = doc?.actor ?? doc;

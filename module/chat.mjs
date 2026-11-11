@@ -29,6 +29,11 @@ async function onAction(event, message) {
   // Actions that act on whoever clicked (saves, applying damage) don't need to own the source actor.
   switch (action) {
     case "applyTo": return game.jjk.actions.applyTo(button.dataset.targetUuid, Number(button.dataset.amount));
+    case "applyCond": {
+      await game.jjk.actions.applyCondTo(button.dataset.targetUuid, button.dataset.key, button.dataset.value);
+      button.classList.add("applied");
+      return;
+    }
     case "resource": return game.jjk.resources.chatAction(button.dataset, message);
     case "requestSave": {
       const targets = chosenActors();

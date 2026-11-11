@@ -19,7 +19,9 @@ export function parseStrike(text) {
   const [, kind, name, bonus, paren = "", formula, dtype = ""] = m;
   const traits = paren.split(",").map(s => s.trim()).filter(s => s && !/^(reach|range)\b/i.test(s));
   const reach = paren.match(/(?:reach|range)\s*([\d]+\s*ft)/i)?.[1];
+  const rest = clean(text).slice(m.index + m[0].length).replace(/^[,;\s]+/, "");
   return {
+    rest,
     name: clean(name).replace(/^\w/, c => c.toUpperCase()), bonus: Number(bonus), formula: formula.replace(/\s+/g, ""),
     damageType: /^(plus|and|on|the)$/i.test(dtype.split(" ")[0]) ? "" : dtype.split(" ")[0].toLowerCase(),
     traits: traits.join(", "), range: kind.toLowerCase() === "ranged" ? `ranged${reach ? ` ${reach}` : ""}` : `melee${reach ? ` (reach ${reach})` : ""}`
@@ -93,7 +95,8 @@ export async function importStatBlock(actor, { notify = true } = {}) {
   const docs = [
     ...strikes.map(s => ({
       name: s.name, type: "weapon", img: s.range.startsWith("ranged") ? "icons/svg/target.svg" : "icons/svg/sword.svg", flags: flag,
-      system: { attackOverride: s.bonus, formula: s.formula, damageType: s.damageType, traits: s.traits, range: s.range, dieSize: "d8", equipped: true }
+      system: { attackOverride: s.bonus, formula: s.formula, damageType: s.damageType, traits: s.traits, range: s.range, dieSize: "d8", equipped: true,
+        description: s.rest ? `<p>${foundry.utils.escapeHTML(s.rest)}</p>` : "" }
     })),
     ...techniques.map(t => ({
       name: t.name, type: "ability", img: "icons/svg/aura.svg", flags: flag,
@@ -105,7 +108,7 @@ export async function importStatBlock(actor, { notify = true } = {}) {
     }))
   ];
   if (docs.length) await actor.createEmbeddedDocuments("Item", docs);
-  await actor.setFlag(SYSTEM_ID, "statBlockRead", true);
+  await actor.setFlag(SYSTEM_ID, "statBlockRead", 2);   // 2 = Strike text kept for condition buttons (v0.6.0)
   if (notify) ui.notifications.info(`${actor.name}: read ${strikes.length} Strike(s) and ${techniques.length} technique(s) from the stat block.`);
   return { strikes: strikes.length, techniques: techniques.length };
 }
