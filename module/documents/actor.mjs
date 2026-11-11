@@ -55,16 +55,16 @@ export class JJKActor extends Actor {
   }
 
   /** A cursed strike / Strike using Cursed Attack. */
-  rollCursedAttack(label = "Cursed Strike", { bonus = 0, prompt = true, flags = {}, map = 0, agile = false } = {}) {
-    return rollCheck({ actor: this, label, modifier: this.system.cursedAttack.value + bonus, isAttack: true, prompt, flags, map, agile });
+  rollCursedAttack(label = "Cursed Strike", { bonus = 0, prompt = true, flags = {}, map = 0, agile = false, dc = null, dcLabel = "" } = {}) {
+    return rollCheck({ actor: this, label, modifier: this.system.cursedAttack.value + bonus, isAttack: true, prompt, flags, map, agile, dc, dcLabel });
   }
 
   /** Attack with a weapon (its override bonus, else Cursed Attack + its bonus). */
-  rollWeaponAttack(weapon, { prompt = true, map = 0, flags = {} } = {}) {
+  rollWeaponAttack(weapon, { prompt = true, map = 0, flags = {}, dc = null, dcLabel = "" } = {}) {
     const agile = /\bagile\b/i.test(weapon.system.traits ?? "");
     const ov = weapon.system.attackOverride;
-    if (Number.isFinite(ov)) return rollCheck({ actor: this, label: weapon.name, modifier: ov, isAttack: true, prompt, map, agile, flags });
-    return this.rollCursedAttack(weapon.name, { bonus: weapon.system.bonus, prompt, map, agile, flags });
+    if (Number.isFinite(ov)) return rollCheck({ actor: this, label: weapon.name, modifier: ov, isAttack: true, prompt, map, agile, flags, dc, dcLabel });
+    return this.rollCursedAttack(weapon.name, { bonus: weapon.system.bonus, prompt, map, agile, flags, dc, dcLabel });
   }
 
   /** Output damage: CE spent × technique die + key mod. */

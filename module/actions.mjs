@@ -109,8 +109,18 @@ async function chooseTargets(actor, { title, multi = false, allies = false } = {
   if (picked === null || picked === undefined) return null;
   const chosen = picked.map(id => canvas.tokens.get(id)).filter(Boolean);
   // Mirror the choice onto the user's targets (so the token rings show who was hit).
-  try { game.user.updateTokenTargets?.(chosen.map(t => t.id)); } catch {}
+  try {
+    if (canvas.tokens.setTargets) canvas.tokens.setTargets(chosen.map(t => t.id), { mode: "replace" });
+    else { for (const t of current) t.setTarget(false, { releaseOthers: false }); chosen.forEach((t, i) => t.setTarget(true, { releaseOthers: i === 0 })); }
+  } catch (err) { console.warn(`${SYSTEM_ID} | couldn't set targets`, err); }
   return chosen.map(t => t.actor).filter(Boolean);
+}
+
+/** { dc, dcLabel } for an attack against the first target's AC (or nothing without a target). */
+function acOf(targets) {
+  const t = targets?.[0];
+  const ac = t?.system?.attributes?.ac?.value;
+  return Number.isFinite(ac) ? { dc: ac, dcLabel: `${t.name} AC` } : {};
 }
 
 /* ---------- damage ---------- */
@@ -173,7 +183,8 @@ export async function performStrike(actor, weapon = null, { map = 0, prompt = fa
   const targets = await chooseTargets(actor, { title: `${weapon?.name ?? "Reinforced Strike"}: who are you attacking?` });
   if (targets === null) return;
   const flags = { auto: true };
-  const r = weapon ? await actor.rollWeaponAttack(weapon, { prompt, map, flags }) : await actor.rollCursedAttack("Reinforced Strike", { prompt, map, flags });
+  const vs = acOf(targets);
+  const r = weapon ? await actor.rollWeaponAttack(weapon, { prompt, map, flags, ...vs }) : await actor.rollCursedAttack("Reinforced Strike", { prompt, map, flags, ...vs });
   if (!r) return;
   if (r.degree !== null && r.degree < 2) return;   // miss
   const s = actor.system;
@@ -249,7 +260,7 @@ export async function performAbility(actor, item, { map = 0, prompt = false } = 
 
   // 3. Resolve.
   if (s.resolution === "attack") {
-    const r = await actor.rollCursedAttack(item.name, { prompt, map, agile: /\bagile\b/i.test(s.traits), flags: { auto: true } });
+    const r = await actor.rollCursedAttack(item.name, { prompt, map, agile: /\bagile\b/i.test(s.traits), flags: { auto: true }, ...acOf(targets) });
     if (!r) return;
     const hit = r.degree === null || r.degree >= 2;
     const hitKey = r.degree === 3 ? "crit" : "hit";
