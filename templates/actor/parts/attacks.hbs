@@ -11,8 +11,9 @@
       {{#each attacks.strikes}}
       <li class="jjk-attack" data-item-id="{{id}}">
         <img src="{{img}}" alt=""><span class="name">{{name}}<small>{{sub}}</small></span>
-        <span class="maps">{{#each maps}}<a class="map" data-action="strike" data-map="{{@index}}" title="{{title}}">{{label}}</a>{{/each}}</span>
-        <span class="dmg">{{damage}}</span>
+        <span class="maps">{{#each maps}}<a class="map" data-action="strike" data-map="{{@index}}" title="{{title}}">{{label}}</a>{{/each}}
+          {{#if autoFire}}<a class="map" data-action="autoFire" title="◆◆ Auto-Fire: {{autoFire}} rounds, 10-foot burst, basic Reflex save vs your Technique DC">Auto-Fire</a>{{/if}}</span>
+        <span class="dmg">{{damage}}{{#if ammo}}<span class="jjk-ammo{{#if ammo.empty}} empty{{/if}}" title="Rounds loaded">{{ammo.loaded}}/{{ammo.max}}</span><a class="map" data-action="reload" title="Reload ({{ammo.reload}})">Reload</a>{{/if}}</span>
       </li>
       {{/each}}
     </ol>

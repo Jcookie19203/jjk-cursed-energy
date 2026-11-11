@@ -86,3 +86,50 @@ export const GEAR = [
   ["Bandages", "L", "1 cp", "Stops bleeding with Administer First Aid."],
   ["Backpack", "-", "1 sp", "Carries up to 4 Bulk without counting against your limit."]
 ].map(([name, bulk, price, text]) => ({ name, bulk, price, description: p(text) }));
+
+/* ---------- Modern weapons (Core Rules VIII) ---------- */
+// Prices are in yen. Everyday melee weapons are sold at the supply office; firearms and explosives only at the Bureau Armory.
+
+export const MODERN_WEAPONS = [
+  ["Baseball Bat", "d6", "bludgeoning", "melee", "backswing, shove", 8000, "Aluminium or wood. A favourite of delinquents, and of exorcists who were delinquents."],
+  ["Crowbar", "d6", "bludgeoning", "melee", "shove, versatile P", 4000, "Opens doors, crates and the occasional curse."],
+  ["Combat Knife", "d4", "piercing", "melee / thrown 10 ft", "agile, finesse, thrown, versatile S", 15000, "A military fighting knife with a serrated spine."],
+  ["Machete", "d6", "slashing", "melee", "sweep", 12000, "A long, heavy brush blade."],
+  ["Fire Axe", "d8", "slashing", "melee", "sweep, two-handed", 10000, "Pulled off the wall of a burning building, or bought new. Needs both hands."],
+  ["Telescopic Baton", "d4", "bludgeoning", "melee", "agile, finesse, nonlethal, parry", 6000, "Snaps out to full length with a flick of the wrist. Standard issue for Bureau assistant managers."],
+  ["Sledgehammer", "d10", "bludgeoning", "melee", "shove, two-handed", 15000, "Slow, heavy and very good at walls. Needs both hands."],
+  ["Chainsaw", "d10", "slashing", "melee", "forceful, sweep, two-handed, loud", 45000, "Needs both hands. Everyone within 100 feet hears it start."]
+].map(([name, dieSize, damageType, range, traits, yen, text]) => ({ name, dieSize, damageType, range, traits, yen, description: p(text) }));
+
+// [name, die, type, range, traits, magazine, reload actions, auto-fire rounds, yen, text]
+export const FIREARMS = [
+  ["Revolver", "d6", "piercing", "ranged 60 ft", "firearm, concussive, fatal d10", 6, 1, 0, 150000, "Six chambers and a heavy trigger. It never jams, and sorcerers who favour guns tend to start here."],
+  ["Semi-Automatic Pistol", "d6", "piercing", "ranged 50 ft", "firearm, concussive", 15, 1, 0, 120000, "A Bureau-licensed service pistol. Fifteen rounds and a quick magazine change."],
+  ["Submachine Gun", "d4", "piercing", "ranged 40 ft", "firearm, concussive, auto-fire", 30, 1, 5, 400000, "Compact and fast. Auto-Fire empties five rounds into a 10-foot burst."],
+  ["Pump Shotgun", "d8", "piercing", "ranged 30 ft", "firearm, concussive, scatter 10 ft, two-handed", 6, 2, 0, 250000, "Six shells, loaded one at a time. Brutal up close; the spread clips anything beside the target."],
+  ["Assault Rifle", "d8", "piercing", "ranged 100 ft", "firearm, concussive, auto-fire, two-handed", 30, 1, 5, 700000, "A military rifle the Bureau licenses only to sorcerers who keep their paperwork in order."],
+  ["Sniper Rifle", "d10", "piercing", "ranged 200 ft", "firearm, fatal d12, kickback, two-handed", 5, 1, 0, 900000, "Bolt-action and scoped. A curse rarely knows where the shot came from."],
+  ["Taser", "d4", "electricity", "ranged 15 ft", "firearm, nonlethal", 1, 1, 0, 30000, "Fires two barbed probes on wires. On a critical hit, the target is stunned 1."]
+].map(([name, dieSize, damageType, range, traits, magazine, reload, autoFire, yen, text]) =>
+  ({ name, dieSize, damageType, range, traits, firearm: true, magazine, loaded: magazine, reload, autoFire, yen, description: p(text) }));
+
+export const EXPLOSIVES = [
+  { name: "Fragmentation Grenade", dieSize: "d6", damageType: "piercing", range: "thrown 30 ft", traits: "consumable, thrown", area: "10-ft burst", save: "reflex", yen: 40000,
+    text: "Pull the pin, throw it up to 30 feet. Everyone in a 10-foot burst makes a basic Reflex save against your Technique DC." },
+  { name: "Incendiary Grenade", dieSize: "d6", damageType: "fire", range: "thrown 30 ft", traits: "consumable, fire, thrown", area: "10-ft burst", save: "reflex", yen: 45000,
+    text: "A burst of burning gel. Everyone in a 10-foot burst makes a basic Reflex save against your Technique DC." },
+  { name: "Flashbang", dieSize: "d4", damageType: "", range: "thrown 30 ft", traits: "consumable, thrown, visual, auditory", area: "10-ft burst", save: "fortitude", noDamage: true, yen: 25000,
+    text: "A blinding flash and a deafening bang. Everyone in a 10-foot burst makes a Fortitude save against your Technique DC. On a failure, the creature is dazzled. On a critical failure, it is blinded and deafened." }
+].map(({ text, ...e }) => ({ ...e, consumable: true, quantity: 3, description: p(`${text} Comes in a pack of three; each throw uses one.`) }));
+
+export const MODERN_ARMOR = [
+  ["Motorcycle Jacket", "light", 1, 4, 0, 0, 10, 40000, "Armoured leather with padding at the shoulders and elbows."],
+  ["Ballistic Vest", "light", 2, 3, -1, 0, 12, 200000, "A Kevlar vest with trauma plates. Bureau Armory only."],
+  ["Riot Gear", "medium", 4, 1, -2, -5, 16, 350000, "Helmet, plates and shin guards from a police supplier. Bureau Armory only."]
+].map(([name, category, acBonus, dexCap, checkPenalty, speedPenalty, strength, yen, text]) => ({ name, category, acBonus, dexCap, checkPenalty, speedPenalty, strength: Math.floor((strength - 10) / 2), yen, description: p(text) }));
+
+export const MODERN_GEAR = [
+  ["Smoke Grenade", "L", 15000, "Throw it up to 30 feet. Smoke fills a 20-foot burst for 1 minute, and creatures inside it are concealed."],
+  ["Gun Case", "1", 10000, "A locking hard case. Bureau rules say a firearm travels in one."],
+  ["Hearing Protection", "L", 5000, "Electronic earmuffs. You can't be deafened by gunfire or a flashbang while you wear them."]
+].map(([name, bulk, yen, text]) => ({ name, bulk, yen, description: p(text) }));

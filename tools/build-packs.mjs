@@ -306,6 +306,17 @@ for (const w of CORE.WEAPONS) itemDoc("equipment", { name: w.name, type: "weapon
 for (const w of CORE.CURSED_TOOLS) itemDoc("equipment", { name: w.name, type: "weapon", img: "icons/svg/lightning.svg", folder: eqTools, system: { ...wBase, ...w } });
 for (const a of CORE.ARMOR) itemDoc("equipment", { name: a.name, type: "armor", img: "icons/svg/shield.svg", folder: eqArmor, system: { traits: "", equipped: false, bulk: "1", price: "", ...a } });
 for (const g of CORE.GEAR) itemDoc("equipment", { name: g.name, type: "gear", img: "icons/svg/item-bag.svg", folder: eqGear, system: { quantity: 1, traits: "", ...g, yen: yenOf(g.price) } });
+// Modern weapons (Core Rules VIII): everyday melee at the supply office; firearms, explosives and ballistic armor at the Bureau Armory.
+const eqModern = folderDoc("equipment", "Modern Weapons", "Item", 4);
+const eqFirearms = folderDoc("equipment", "Firearms", "Item", 5);
+const eqExplosives = folderDoc("equipment", "Explosives", "Item", 6);
+for (const w of CORE.MODERN_WEAPONS) itemDoc("equipment", { name: w.name, type: "weapon", img: "icons/svg/sword.svg", folder: eqModern, system: { ...wBase, ...w } });
+for (const w of CORE.FIREARMS) itemDoc("equipment", { name: w.name, type: "weapon", img: "icons/svg/target.svg", folder: eqFirearms, system: { ...wBase, ...w } });
+for (const w of CORE.EXPLOSIVES) itemDoc("equipment", { name: w.name, type: "weapon", img: "icons/svg/explosion.svg", folder: eqExplosives, system: { ...wBase, ...w, bulk: "L" } });
+for (const a of CORE.MODERN_ARMOR) itemDoc("equipment", { name: a.name, type: "armor", img: "icons/svg/shield.svg", folder: eqArmor, system: { traits: "", equipped: false, bulk: "1", price: "", ...a } });
+for (const g of CORE.MODERN_GEAR) itemDoc("equipment", { name: g.name, type: "gear", img: "icons/svg/item-bag.svg", folder: g.name === "Smoke Grenade" ? eqExplosives : eqGear, system: { quantity: 1, traits: "", price: "", ...g } });
+const ARMORY_ONLY = new Set(["Ballistic Vest", "Riot Gear", "Smoke Grenade", "Gun Case", "Hearing Protection"]);
+const armoryItem = d => d.folder === eqFirearms || d.folder === eqExplosives || ARMORY_ONLY.has(d.name);
 
 /* ---------------- shops (GM-only Actor pack) ---------------- */
 
@@ -336,9 +347,17 @@ shopActor({
     description: para("The school's supply office. Uniforms, field kits, curtain talismans and standard-issue weapons, at cost. The clerk also buys back gear you don't need, at half price."),
     gmNotes: para("Basic supplies, always open. Everything except the issue cursed knives is always in stock; the knives restock weekly.") },
   stock: [
-    ...docsIn("equipment", d => d.type !== "weapon" || (!d.system.cursedTool && d.system.yen > 0)).map(doc => ({ doc, st: { unlimited: true, qty: 0, max: 0 } })),
+    ...docsIn("equipment", d => !armoryItem(d) && (d.type !== "weapon" || (!d.system.cursedTool && d.system.yen > 0))).map(doc => ({ doc, st: { unlimited: true, qty: 0, max: 0 } })),
     ...docsIn("equipment", d => d.name === "Grade 4 Cursed Knife").map(doc => ({ doc, st: { qty: 2, max: 2 } }))
   ]
+});
+shopActor({
+  name: "Bureau Armory",
+  system: { kind: "rare", location: "A steel door in the Bureau annex basement, behind the records office", markup: 100, sellRate: 50, restockDays: 7,
+    search: { dc: 15, skills: "society, diplomacy", minGrade: "grade4", hint: "Japan does not sell guns. The Bureau does, to licensed sorcerers. File a firearms permit with the records office and wait for the call." },
+    description: para("A caged counter, a logbook and a clerk who wants your licence number before he says hello. Firearms, grenades and ballistic armor for licensed sorcerers. Every round you're issued is written down."),
+    gmNotes: para("Open to any PC from Grade 4 who files the permit (Society or Diplomacy, DC 15). Everything is always in stock at list price. Ammunition is free: the Bureau resupplies magazines between jobs.") },
+  stock: docsIn("equipment", armoryItem).map(doc => ({ doc, st: { unlimited: true, qty: 0, max: 0 } }))
 });
 shopActor({
   name: "Tsuda's Pawn & Curio",

@@ -240,3 +240,9 @@
 .jjk-picker .jjk-pick .tag { font-size: 0.8em; opacity: 0.75; }
 .jjk-picker .jjk-pick.enemy .tag { color: #c03030; }
 .jjk-picker .jjk-pick.ally .tag { color: #2a8a4a; }
+
+/* Modern weapons: ammo counter and reload on the Attacks tab. */
+.jjk .jjk-attack .dmg { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.jjk .jjk-attack .jjk-ammo { font-family: monospace; padding: 1px 5px; border: 1px solid var(--jjk-line); border-radius: 3px; }
+.jjk .jjk-attack .jjk-ammo.empty { color: #c33; border-color: #c33; font-weight: bold; }
+.jjk .jjk-attack .dmg .map { min-width: 0; padding: 2px 6px; opacity: 0.85; }

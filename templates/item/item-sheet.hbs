@@ -59,6 +59,16 @@
       <label class="wide">Traits <input type="text" name="system.traits" value="{{system.traits}}"></label>
       <label class="jjk-check"><input type="checkbox" name="system.cursedTool" {{checked system.cursedTool}}> Cursed tool</label>
       <label>Stored charge <input type="number" name="system.charge" value="{{system.charge}}" min="0"></label>
+      <label class="jjk-check"><input type="checkbox" name="system.firearm" {{checked system.firearm}}> Firearm</label>
+      <label>Magazine <input type="number" name="system.magazine" value="{{system.magazine}}" min="0" title="Rounds it holds (0 = no magazine)"></label>
+      <label>Loaded <input type="number" name="system.loaded" value="{{system.loaded}}" min="0"></label>
+      <label>Reload (actions) <input type="number" name="system.reload" value="{{system.reload}}" min="0" max="3"></label>
+      <label>Auto-Fire rounds <input type="number" name="system.autoFire" value="{{system.autoFire}}" min="0" title="0 = can't Auto-Fire"></label>
+      <label>Area <input type="text" name="system.area" value="{{system.area}}" placeholder="10-ft burst" title="Set for grenades: no attack roll, everyone in the area saves"></label>
+      <label>Area save <select name="system.save">{{selectOptions saveOptions selected=system.save}}</select></label>
+      <label class="jjk-check"><input type="checkbox" name="system.noDamage" {{checked system.noDamage}}> No damage</label>
+      <label class="jjk-check"><input type="checkbox" name="system.consumable" {{checked system.consumable}}> Used up</label>
+      <label>Quantity <input type="number" name="system.quantity" value="{{system.quantity}}" min="0"></label>
       <label>Bulk <input type="text" name="system.bulk" value="{{system.bulk}}"></label>
       <label>Price (¥) <input type="number" name="system.yen" value="{{system.yen}}" min="0" step="100"></label>
     </div>

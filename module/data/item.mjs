@@ -87,6 +87,17 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       cursedTool: bool(false),
       charge: int(0, { min: 0 }),
       bonus: int(0),
+      // Modern weapons (Core Rules VIII). A firearm adds no key modifier to damage and can't Black Flash.
+      firearm: bool(false),
+      magazine: int(0, { min: 0 }),      // rounds it holds; 0 = no magazine
+      loaded: int(0, { min: 0 }),
+      reload: int(1, { min: 0, max: 3 }), // actions to reload
+      autoFire: int(0, { min: 0 }),       // rounds per Auto-Fire burst; 0 = can't
+      // Area weapons (grenades): no attack roll; everyone in the area saves against your Technique DC.
+      area: str(""),
+      save: str("reflex", { choices: Object.keys(SAVES), blank: false }),
+      noDamage: bool(false),
+      consumable: bool(false),
       equipped: bool(true),
       quantity: int(1, { min: 0 }),
       bulk: str("1"),

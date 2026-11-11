@@ -202,24 +202,57 @@ async function tryBlackFlashFocus(actor) {
 /* ---------- strikes ---------- */
 
 /** Reinforced Strike (weapon = null) or a weapon Strike, fully resolved. */
+/** A weapon's damage formula: Grade dice × its die + key mod (firearms and grenades add no key mod). */
+export function weaponFormula(actor, weapon = null, { crit = false } = {}) {
+  const s = actor.system;
+  if (weapon?.system?.formula) return weapon.system.formula;
+  // Fatal dX: on a critical hit the dice become dX and you add one more.
+  const fatal = crit ? /\bfatal (d\d+)/i.exec(weapon?.system?.traits ?? "")?.[1] : null;
+  const count = (s.strike?.count || 2) + (fatal ? 1 : 0);
+  const die = fatal ?? weapon?.system?.dieSize ?? s.strike?.die ?? "d6";
+  const w = weapon?.system ?? {};
+  const mod = (w.firearm || w.area ? 0 : (s.keyMod ?? 0)) + (w.bonus ?? 0);
+  return mod ? `${count}${die} + ${mod}` : `${count}${die}`;
+}
+
+/** Spend rounds from a magazine. False (with a warning) if there aren't enough. */
+async function useRounds(weapon, n) {
+  const w = weapon.system;
+  if (!(w.magazine > 0)) return true;
+  if (w.loaded < n) {
+    ui.notifications.warn(`${weapon.name} has ${w.loaded} round${w.loaded === 1 ? "" : "s"} left${n > 1 ? ` (needs ${n})` : ""}. Reload it first.`);
+    return false;
+  }
+  await weapon.update({ "system.loaded": w.loaded - n });
+  return true;
+}
+
+/** Use up one of a stack of consumables (grenades). */
+async function useOne(actor, weapon) {
+  if (!weapon.system.consumable) return;
+  const q = (weapon.system.quantity ?? 1) - 1;
+  if (q <= 0) await weapon.delete();
+  else await weapon.update({ "system.quantity": q });
+}
+
 export async function performStrike(actor, weapon = null, { map = 0, prompt = false } = {}) {
+  if (weapon?.system?.area) return performAreaWeapon(actor, weapon);
+  if (weapon?.system?.consumable && !(weapon.system.quantity > 0)) return ui.notifications.warn(`${actor.name} has no ${weapon.name} left.`);
+  if (weapon?.system?.magazine > 0 && weapon.system.loaded < 1) return ui.notifications.warn(`${weapon.name} is empty. Reload it first.`);
   const targets = await chooseTargets(actor, { title: `${weapon?.name ?? "Reinforced Strike"}: who are you attacking?` });
   if (targets === null) return;
+  if (weapon && !(await useRounds(weapon, 1))) return;
   const flags = { auto: true };
   const vs = acOf(targets);
   const r = weapon ? await actor.rollWeaponAttack(weapon, { prompt, map, flags, ...vs }) : await actor.rollCursedAttack("Reinforced Strike", { prompt, map, flags, ...vs });
+  if (weapon) await useOne(actor, weapon);
   if (!r) return;
   if (r.degree !== null && r.degree < 2) return;   // miss
   const s = actor.system;
-  const bf = await tryBlackFlash(actor, r.degree);
+  // Black Flash needs the cursed energy to land with the blow itself, so a bullet can't spark one.
+  const bf = weapon?.system?.firearm ? false : await tryBlackFlash(actor, r.degree);
   const crit = r.degree === 3;
-  let formula;
-  if (weapon?.system?.formula) formula = weapon.system.formula;
-  else {
-    const count = s.strike?.count || 2;
-    const die = weapon?.system?.dieSize ?? s.strike?.die ?? "d6";
-    formula = `${count}${die} + ${(s.keyMod ?? 0) + (weapon?.system?.bonus ?? 0)}`;
-  }
+  const formula = weaponFormula(actor, weapon, { crit });
   const name = weapon?.name ?? "Reinforced Strike";
   const conds = extractConditions(weapon?.system?.description ?? "", "attack");
   const hitKey = crit ? "crit" : "hit";
@@ -231,6 +264,61 @@ export async function performStrike(actor, weapon = null, { map = 0, prompt = fa
     await weapon.update({ "system.charge": 0 });
   }
   await resourceHooks.afterStrike?.(actor, { weapon, degree: r.degree, targets });
+}
+
+/** Everyone picked saves against your Technique DC; basic save damage, then any conditions in the description. */
+async function areaSave(actor, { label, formula, damageType, targets, save, note, conds, noDamage = false }) {
+  const dc = actor.system.techniqueDC?.value ?? 10;
+  const degrees = new Map();
+  for (const t of targets) {
+    const r = await t.rollSave(save, { dc, prompt: false, dcLabel: label });
+    degrees.set(t.uuid, r?.degree ?? 1);
+  }
+  const BASIC = [2, 1, 0.5, 0];
+  const saveNote = `${noDamage ? "" : "Basic "}${SAVES[save].label} save vs DC ${dc}${note ? ` · ${note}` : ""}.`;
+  const condsOf = conds.length ? t => conditionsFor(conds, degrees.get(t.uuid) ?? 1) : null;
+  if (!noDamage) {
+    const perTarget = Object.assign((t, total) => Math.floor(total * BASIC[degrees.get(t.uuid) ?? 1]),
+      { label: t => DEGREE_LABELS[degrees.get(t.uuid) ?? 1] });
+    await postDamage({ actor, label, formula, damageType, targets, perTarget: targets.length ? perTarget : null, condsOf, note: saveNote });
+  } else if (targets.length) {
+    await postEffects({ actor, label, targets, resultOf: t => DEGREE_LABELS[degrees.get(t.uuid) ?? 1], condsOf: condsOf ?? (() => []), note: saveNote });
+  }
+}
+
+/** A grenade or other area weapon: pick everyone in the area, they save, it's used up. */
+export async function performAreaWeapon(actor, weapon) {
+  const w = weapon.system;
+  if (w.consumable && !(w.quantity > 0)) return ui.notifications.warn(`${actor.name} has no ${weapon.name} left.`);
+  const targets = await chooseTargets(actor, { title: `${weapon.name}: who's in the ${w.area}?`, multi: true });
+  if (targets === null) return;
+  if (!(await useRounds(weapon, 1))) return;
+  await useOne(actor, weapon);
+  await areaSave(actor, { label: weapon.name, formula: weaponFormula(actor, weapon), damageType: w.damageType, targets, save: w.save,
+    note: w.area, conds: extractConditions(w.description ?? "", "save"), noDamage: w.noDamage });
+}
+
+/** Auto-Fire (◆◆): spray a 10-foot burst; everyone in it makes a basic Reflex save against your Technique DC. */
+export async function performAutoFire(actor, weapon) {
+  const w = weapon.system;
+  if (!(w.autoFire > 0)) return ui.notifications.warn(`${weapon.name} can't Auto-Fire.`);
+  if (w.loaded < w.autoFire) return ui.notifications.warn(`Auto-Fire needs ${w.autoFire} rounds; ${weapon.name} has ${w.loaded}. Reload it first.`);
+  const targets = await chooseTargets(actor, { title: `${weapon.name} Auto-Fire: who's in the 10-foot burst?`, multi: true });
+  if (targets === null) return;
+  if (!(await useRounds(weapon, w.autoFire))) return;
+  await areaSave(actor, { label: `${weapon.name}: Auto-Fire`, formula: weaponFormula(actor, weapon), damageType: w.damageType, targets, save: "reflex",
+    note: `10-ft burst, ${w.autoFire} rounds`, conds: [] });
+}
+
+/** Reload a magazine to full. */
+export async function reloadWeapon(actor, weapon) {
+  const w = weapon.system;
+  if (!(w.magazine > 0)) return;
+  if (w.loaded >= w.magazine) return ui.notifications.info(`${weapon.name} is already full.`);
+  await weapon.update({ "system.loaded": w.magazine });
+  const glyph = ["free action", "◆", "◆◆", "◆◆◆"][w.reload] ?? "◆";
+  await ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor }),
+    content: `<div class="jjk-chat"><strong>Reload</strong> (${glyph}): ${esc(weapon.name)} is loaded, ${w.magazine}/${w.magazine}.</div>` });
 }
 
 /* ---------- technique cards ---------- */

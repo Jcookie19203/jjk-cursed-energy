@@ -1,7 +1,7 @@
 import { SYSTEM_ID, GRADES, GRADE_ORDER, ABILITIES, SAVES, SKILLS, PROFICIENCY, VALUED_CONDITIONS, TOGGLE_CONDITIONS, ACTION_GLYPH, formatYen } from "../config.mjs";
 import { DOMAIN_AMPLIFY } from "./item-sheet.mjs";
 import { startSearch, searchCooldown, formatSpan, payMission } from "../shop.mjs";
-import { performStrike, performAbility, costRange } from "../actions.mjs";
+import { performStrike, performAbility, costRange, weaponFormula, reloadWeapon, performAutoFire } from "../actions.mjs";
 import * as resources from "../resources.mjs";
 import { importStatBlock } from "../statblock.mjs";
 
@@ -74,6 +74,8 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       payActor: JJKBaseActorSheet.#payActor,
       openShop: JJKBaseActorSheet.#openShop,
       strike: JJKBaseActorSheet.#strike,
+      reload: JJKBaseActorSheet.#reload,
+      autoFire: JJKBaseActorSheet.#autoFire,
       technique: JJKBaseActorSheet.#technique,
       resStep: JJKBaseActorSheet.#resStep,
       resToggle: JJKBaseActorSheet.#resToggle,
@@ -122,6 +124,14 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const id = target.closest("[data-item-id]")?.dataset.itemId;
     const weapon = id && id !== "strike" ? this.document.items.get(id) : null;
     performStrike(this.document, weapon, { map: Number(target.dataset.map) || 0, prompt: event.shiftKey });
+  }
+  static #reload(event, target) {
+    const weapon = this.document.items.get(target.closest("[data-item-id]")?.dataset.itemId);
+    if (weapon) reloadWeapon(this.document, weapon);
+  }
+  static #autoFire(event, target) {
+    const weapon = this.document.items.get(target.closest("[data-item-id]")?.dataset.itemId);
+    if (weapon) performAutoFire(this.document, weapon);
   }
   static #technique(event, target) {
     const item = this.document.items.get(target.closest("[data-item-id]").dataset.itemId);
@@ -271,11 +281,16 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       ? [{ id: "strike", name: "Reinforced Strike", img: "icons/skills/melee/unarmed-punch-fist.webp", sub: "unarmed", maps: maps(atk, false), damage: s.strike?.formula ?? "" }]
       : [];
     for (const w of items.filter(i => i.type === "weapon")) {
-      const agile = /\bagile\b/i.test(w.system.traits ?? "");
-      const base = Number.isFinite(w.system.attackOverride) ? w.system.attackOverride : atk + (w.system.bonus ?? 0);
-      const dmg = w.system.formula || `${s.strike?.count ?? 2}${w.system.dieSize} + ${(s.keyMod ?? 0) + (w.system.bonus ?? 0)}`;
-      strikes.push({ id: w.id, name: w.name, img: w.img, sub: [w.system.range, w.system.traits].filter(Boolean).join(" · "), maps: maps(base, agile),
-        damage: `${dmg} ${w.system.damageType}${w.system.charge ? ` + ${w.system.charge}${die} charge` : ""}` });
+      const ws = w.system;
+      const agile = /\bagile\b/i.test(ws.traits ?? "");
+      const base = Number.isFinite(ws.attackOverride) ? ws.attackOverride : atk + (ws.bonus ?? 0);
+      const dmg = ws.noDamage ? "no damage" : `${weaponFormula(actor, w)} ${ws.damageType}`;
+      const sub = [ws.range, ws.area, ws.traits, ws.consumable ? `×${ws.quantity}` : ""].filter(Boolean).join(" · ");
+      strikes.push({ id: w.id, name: w.name, img: w.img, sub,
+        maps: ws.area ? [{ label: `Throw (${SAVES[ws.save].label})`, title: "Everyone in the area saves against your Technique DC" }] : maps(base, agile),
+        ammo: ws.magazine > 0 ? { loaded: ws.loaded, max: ws.magazine, empty: ws.loaded < 1, reload: ["free", "◆", "◆◆", "◆◆◆"][ws.reload] ?? "◆" } : null,
+        autoFire: ws.autoFire > 0 ? ws.autoFire : 0,
+        damage: `${dmg}${ws.charge ? ` + ${ws.charge}${die} charge` : ""}` });
     }
     const row = i => {
       const r = costRange(actor, i);
