@@ -56,6 +56,11 @@ export class AbilityData extends foundry.abstract.TypeDataModel {
       isDomain: bool(false),
       domain: domainSchema(),
       pressure: int(0, { min: 0, max: 10 }),
+      // Fixed damage instead of output damage (curse stat blocks): "3d6+4". dc overrides the actor's Technique DC.
+      damage: str(""),
+      damageType: str(""),
+      damageAlways: bool(false),
+      dc: optInt(),
       description: html()
     };
   }

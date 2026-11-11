@@ -27,6 +27,7 @@
 
   <nav class="jjk-tabs">
     <a class="{{#if (jjk-eq tab 'main')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="main">Stat Block</a>
+    <a class="{{#if (jjk-eq tab 'attacks')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="attacks">Attacks</a>
     <a class="{{#if (jjk-eq tab 'cards')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="cards">Abilities</a>
     <a class="{{#if (jjk-eq tab 'notes')}}active{{/if}}" data-action="jjkTab" data-group="primary" data-tab="notes">GM Notes</a>
   </nav>
@@ -79,6 +80,10 @@
       </div>
     </div>
   </section>
+  {{/if}}
+
+  {{#if (jjk-eq tab "attacks")}}
+  {{> "systems/jjk-cursed-energy/templates/actor/parts/attacks.hbs"}}
   {{/if}}
 
   {{#if (jjk-eq tab "cards")}}

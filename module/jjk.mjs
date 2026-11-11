@@ -82,7 +82,8 @@ Hooks.once("init", () => {
     `systems/${SYSTEM_ID}/templates/actor/curse-sheet.hbs`,
     `systems/${SYSTEM_ID}/templates/actor/shop-sheet.hbs`,
     `systems/${SYSTEM_ID}/templates/item/item-sheet.hbs`,
-    `systems/${SYSTEM_ID}/templates/actor/parts/resources.hbs`
+    `systems/${SYSTEM_ID}/templates/actor/parts/resources.hbs`,
+    `systems/${SYSTEM_ID}/templates/actor/parts/attacks.hbs`
   ]);
 
   registerChatHooks();

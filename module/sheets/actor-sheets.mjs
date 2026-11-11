@@ -3,6 +3,7 @@ import { DOMAIN_AMPLIFY } from "./item-sheet.mjs";
 import { startSearch, searchCooldown, formatSpan, payMission } from "../shop.mjs";
 import { performStrike, performAbility, costRange } from "../actions.mjs";
 import * as resources from "../resources.mjs";
+import { importStatBlock } from "../statblock.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -78,7 +79,8 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       resToggle: JJKBaseActorSheet.#resToggle,
       resAdd: JJKBaseActorSheet.#resAdd,
       resRemove: JJKBaseActorSheet.#resRemove,
-      resAddTargets: JJKBaseActorSheet.#resAddTargets
+      resAddTargets: JJKBaseActorSheet.#resAddTargets,
+      readStatBlock: JJKBaseActorSheet.#readStatBlock
     }
   };
 
@@ -159,6 +161,8 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     list.splice(Number(target.dataset.index), 1);
     resources.setValue(this.document, key, list);
   }
+  static #readStatBlock() { if (game.user.isGM) importStatBlock(this.document); }
+
   static #resAddTargets(event, target) {
     const key = JJKBaseActorSheet.#resKey(target);
     const docs = [...game.user.targets].map(t => t.actor).filter(Boolean);
@@ -242,7 +246,15 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     context.vows = items.filter(i => i.type === "vow");
     context.origins = items.filter(i => i.type === "ancestry" || i.type === "background");
     context.resources = resources.sheetContext(actor);
-    if (context.tab === "attacks") context.attacks = this.#prepareAttacks(items, abilities);
+    context.isCurse = actor.type === "curse";
+    if (context.tab === "attacks") {
+      // A curse's actions are read from its stat block the first time the GM opens this tab.
+      if (context.isCurse && game.user.isGM && !actor.getFlag(SYSTEM_ID, "statBlockRead") && !this._readingStatBlock) {
+        this._readingStatBlock = true;
+        importStatBlock(actor, { notify: false }).finally(() => { this._readingStatBlock = false; });
+      }
+      context.attacks = this.#prepareAttacks(items, abilities);
+    }
     return context;
   }
 
@@ -255,7 +267,9 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       label: signed(base - p), title: ["First attack", "Second attack (MAP)", "Third+ attack (MAP)"][i]
     }));
     const die = s.techniqueDie;
-    const strikes = [{ id: "strike", name: "Reinforced Strike", img: "icons/skills/melee/unarmed-punch-fist.webp", sub: "unarmed", maps: maps(atk, false), damage: s.strike?.formula ?? "" }];
+    const strikes = actor.type === "sorcerer"
+      ? [{ id: "strike", name: "Reinforced Strike", img: "icons/skills/melee/unarmed-punch-fist.webp", sub: "unarmed", maps: maps(atk, false), damage: s.strike?.formula ?? "" }]
+      : [];
     for (const w of items.filter(i => i.type === "weapon")) {
       const agile = /\bagile\b/i.test(w.system.traits ?? "");
       const base = Number.isFinite(w.system.attackOverride) ? w.system.attackOverride : atk + (w.system.bonus ?? 0);
@@ -267,13 +281,13 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       const r = costRange(actor, i);
       const cost = r.fixed ? (r.min ? `${r.min} CE` : "") : `${r.min}–${r.max} CE`;
       return { id: i.id, name: i.name, img: i.img, sub: [ACTION_GLYPH[i.system.actions] ?? "", cost, i.system.range].filter(Boolean).join(" · "),
-        damage: i.system.usesOutput ? `CE × ${die} + ${s.keyMod}` : "" };
+        damage: i.system.damage ? `${i.system.damage} ${i.system.damageType}`.trim() : i.system.usesOutput ? `CE × ${die} + ${s.keyMod}` : "" };
     };
     const usable = abilities.filter(i => !/^black flash/i.test(i.name)).filter(i => !["passive", "none"].includes(i.system.actions) || i.system.resolution !== "none" || i.system.isDomain);
     return {
       strikes,
       cursed: usable.filter(i => i.system.resolution === "attack").map(i => ({ ...row(i), maps: maps(atk, /\bagile\b/i.test(i.system.traits)) })),
-      saves: usable.filter(i => i.system.resolution === "save").map(i => ({ ...row(i), saveLabel: `${SAVES[i.system.save].label}${i.system.basicSave ? " (basic)" : ""}` })),
+      saves: usable.filter(i => i.system.resolution === "save").map(i => ({ ...row(i), saveLabel: `${SAVES[i.system.save].label}${i.system.dc ? ` DC ${i.system.dc}` : ""}${i.system.basicSave ? " (basic)" : ""}` })),
       other: usable.filter(i => i.system.resolution === "none").map(row)
     };
   }

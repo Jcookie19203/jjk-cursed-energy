@@ -162,40 +162,44 @@ export async function performAbility(actor, item, { map = 0, prompt = false } = 
   const die = game.jjk.domain.amplifiedDie(actor);
   const keyMod = actor.system.keyMod ?? 0;
   const extraDice = hook?.extraDice?.(actor, item, targets) ?? 0;
-  const outputFormula = () => `${Math.max(0, dice + extraDice)}${die} + ${keyMod}`;
+  // Curse stat-block actions carry a fixed damage formula; technique cards use output damage.
+  const fixed = s.damage?.trim();
+  const hasDamage = !!fixed || (s.usesOutput && dice + extraDice > 0);
+  const outputFormula = () => fixed || `${Math.max(0, dice + extraDice)}${die} + ${keyMod}`;
+  const damageType = s.damageType ?? "";
 
   // 3. Resolve.
   if (s.resolution === "attack") {
     const r = await actor.rollCursedAttack(item.name, { prompt, map, agile: /\bagile\b/i.test(s.traits), flags: { auto: true } });
     if (!r) return;
     const hit = r.degree === null || r.degree >= 2;
-    if (hit && s.usesOutput && dice + extraDice > 0) {
+    if (hit && hasDamage) {
       const bf = await tryBlackFlash(actor, r.degree);
-      await postDamage({ actor, label: item.name, formula: outputFormula(), crit: r.degree === 3, bf, targets: targets.slice(0, 1) });
+      await postDamage({ actor, label: item.name, formula: outputFormula(), crit: r.degree === 3, bf, damageType, targets: targets.slice(0, 1) });
     }
     await hook?.after?.(actor, item, { spend, borrowed, form, targets, degree: r.degree, hit });
     return;
   }
   if (s.resolution === "save") {
-    const dc = actor.system.techniqueDC?.value ?? 10;
+    const dc = s.dc ?? actor.system.techniqueDC?.value ?? 10;
     const degrees = new Map();
     for (const t of targets) {
       const r = await t.rollSave(s.save, { dc, prompt: false, dcLabel: item.name });
       degrees.set(t.uuid, r?.degree ?? 1);
     }
-    if (s.usesOutput && dice + extraDice > 0) {
+    if (hasDamage) {
       const BASIC = [2, 1, 0.5, 0];
       // Basic save: double / full / half / none. Otherwise the card's damage lands only on a failure.
       const perTarget = Object.assign(
-        (t, total) => { const dg = degrees.get(t.uuid) ?? 1; return s.basicSave ? Math.floor(total * BASIC[dg]) : (dg <= 1 ? total : 0); },
+        (t, total) => { const dg = degrees.get(t.uuid) ?? 1; return s.basicSave ? Math.floor(total * BASIC[dg]) : (s.damageAlways || dg <= 1 ? total : 0); },
         { label: t => DEGREE_LABELS[degrees.get(t.uuid) ?? 1] });
-      await postDamage({ actor, label: item.name, formula: outputFormula(), targets, perTarget: targets.length ? perTarget : null,
-        note: `${s.basicSave ? "Basic " : ""}${SAVES[s.save].label} save vs DC ${dc}${s.basicSave ? "" : " (damage on a failure)"}.` });
+      await postDamage({ actor, label: item.name, formula: outputFormula(), damageType, targets, perTarget: targets.length ? perTarget : null,
+        note: `${s.basicSave ? "Basic " : ""}${SAVES[s.save].label} save vs DC ${dc}${s.basicSave ? "" : s.damageAlways ? " (damage either way)" : " (damage on a failure)"}.` });
     }
     await hook?.after?.(actor, item, { spend, borrowed, form, targets, degrees });
     return;
   }
-  if (s.usesOutput && dice + extraDice > 0) await postDamage({ actor, label: item.name, formula: outputFormula(), targets: targets.slice(0, 1) });
+  if (hasDamage) await postDamage({ actor, label: item.name, formula: outputFormula(), damageType, targets: targets.slice(0, 1) });
   await hook?.after?.(actor, item, { spend, borrowed, form, targets });
 }
 
