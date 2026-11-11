@@ -158,7 +158,7 @@
 /* ---------- Domain Expansion: themed splash, banner and chat (v0.4.0) ---------- */
 .jjk-domain-splash { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; cursor: pointer; overflow: hidden;
   background: radial-gradient(circle at 50% 50%, var(--dom-mid) 0%, var(--dom-bg) 70%); animation: jjk-dom-in 0.9s cubic-bezier(.2,.8,.2,1) both; }
-.jjk-domain-splash .dom-motif { position: absolute; inset: -20%; background: var(--dom-motif) repeat; background-size: 220px; opacity: 0.18;
+.jjk-domain-splash .dom-motif { position: absolute; inset: -20%; background: var(--dom-motif) repeat; background-size: 220px; opacity: 0.3;
   filter: drop-shadow(0 0 6px var(--dom-accent)); mix-blend-mode: screen; animation: jjk-dom-drift 6s linear both; }
 .jjk-domain-splash .dom-ring { position: absolute; width: 140vmin; height: 140vmin; border-radius: 50%; border: 0.6vmin solid var(--dom-accent);
   box-shadow: 0 0 6vmin var(--dom-accent), inset 0 0 6vmin var(--dom-accent); animation: jjk-dom-ring 1.1s cubic-bezier(.7,0,.3,1) both; }

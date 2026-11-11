@@ -269,7 +269,7 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       return { id: i.id, name: i.name, img: i.img, sub: [ACTION_GLYPH[i.system.actions] ?? "", cost, i.system.range].filter(Boolean).join(" · "),
         damage: i.system.usesOutput ? `CE × ${die} + ${s.keyMod}` : "" };
     };
-    const usable = abilities.filter(i => !["passive", "none"].includes(i.system.actions) || i.system.resolution !== "none" || i.system.isDomain);
+    const usable = abilities.filter(i => !/^black flash/i.test(i.name)).filter(i => !["passive", "none"].includes(i.system.actions) || i.system.resolution !== "none" || i.system.isDomain);
     return {
       strikes,
       cursed: usable.filter(i => i.system.resolution === "attack").map(i => ({ ...row(i), maps: maps(atk, /\bagile\b/i.test(i.system.traits)) })),

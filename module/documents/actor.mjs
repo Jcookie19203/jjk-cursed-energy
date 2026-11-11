@@ -60,11 +60,11 @@ export class JJKActor extends Actor {
   }
 
   /** Attack with a weapon (its override bonus, else Cursed Attack + its bonus). */
-  rollWeaponAttack(weapon, { prompt = true, map = 0 } = {}) {
+  rollWeaponAttack(weapon, { prompt = true, map = 0, flags = {} } = {}) {
     const agile = /\bagile\b/i.test(weapon.system.traits ?? "");
     const ov = weapon.system.attackOverride;
-    if (Number.isFinite(ov)) return rollCheck({ actor: this, label: weapon.name, modifier: ov, isAttack: true, prompt, map, agile });
-    return this.rollCursedAttack(weapon.name, { bonus: weapon.system.bonus, prompt, map, agile });
+    if (Number.isFinite(ov)) return rollCheck({ actor: this, label: weapon.name, modifier: ov, isAttack: true, prompt, map, agile, flags });
+    return this.rollCursedAttack(weapon.name, { bonus: weapon.system.bonus, prompt, map, agile, flags });
   }
 
   /** Output damage: CE spent × technique die + key mod. */
@@ -203,7 +203,7 @@ export class JJKActor extends Actor {
     await this.gainCE(gain);
     ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: this }),
-      content: `<div class="jjk-chat jjk-blackflash"><h3>⚫ BLACK FLASH</h3><p>Maximize the hit's damage dice, then double them for the critical (use the Black Flash box when rolling damage). ${this.name} regains <strong>${gain} CE</strong> and gains <strong>1 composure</strong>.</p></div>`
+      content: `<div class="jjk-chat jjk-blackflash"><h3>⚫ BLACK FLASH</h3><p>The hit's damage dice are maximized, then doubled for the critical. ${this.name} regains <strong>${gain} CE</strong> and gains <strong>1 composure</strong>.</p></div>`
     });
     return true;
   }

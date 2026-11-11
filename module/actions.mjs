@@ -105,7 +105,8 @@ async function tryBlackFlash(actor, degree) {
 /** Reinforced Strike (weapon = null) or a weapon Strike, fully resolved. */
 export async function performStrike(actor, weapon = null, { map = 0, prompt = false } = {}) {
   const targets = userTargets();
-  const r = weapon ? await actor.rollWeaponAttack(weapon, { prompt, map }) : await actor.rollCursedAttack("Reinforced Strike", { prompt, map });
+  const flags = { auto: true };
+  const r = weapon ? await actor.rollWeaponAttack(weapon, { prompt, map, flags }) : await actor.rollCursedAttack("Reinforced Strike", { prompt, map, flags });
   if (!r) return;
   if (r.degree !== null && r.degree < 2) return;   // miss
   const s = actor.system;
@@ -165,7 +166,7 @@ export async function performAbility(actor, item, { map = 0, prompt = false } = 
 
   // 3. Resolve.
   if (s.resolution === "attack") {
-    const r = await actor.rollCursedAttack(item.name, { prompt, map, agile: /\bagile\b/i.test(s.traits) });
+    const r = await actor.rollCursedAttack(item.name, { prompt, map, agile: /\bagile\b/i.test(s.traits), flags: { auto: true } });
     if (!r) return;
     const hit = r.degree === null || r.degree >= 2;
     if (hit && s.usesOutput && dice + extraDice > 0) {
@@ -209,7 +210,8 @@ export async function applyTo(targetUuid, amount) {
     if ((target.system.attributes?.ce?.value ?? 0) > 0 && target.system.reinforcement > 0 && target.type === "sorcerer") {
       reinforce = await DialogV2.confirm({ window: { title: "Reinforcement" }, content: `<p>${esc(target.name)}: spend 1 CE to reduce the damage by Reinforcement?</p>`, rejectClose: false }) ?? false;
     }
-    return target.applyDamage(amount, { reinforce });
+    // Curses use their Reinforcement automatically, the same as when the GM applies it for a player.
+    return target.applyDamage(amount, { reinforce: target.type === "sorcerer" ? reinforce : true });
   }
   return request("applyDamageTo", { targetUuid, amount });
 }

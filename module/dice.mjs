@@ -73,7 +73,8 @@ export async function rollCheck({ actor, label, modifier, isAttack = false, dc =
     degreeHtml = `<div class="jjk-degree degree-${degree}">${DEGREE_LABELS[degree]}<span> vs ${esc(target.name)} ${target.value}</span></div>`;
   }
   let extra = "";
-  if (isAttack && degree === 3) {
+  if (flags.auto) extra = "";
+  else if (isAttack && degree === 3) {
     extra = `<div class="jjk-buttons"><button type="button" data-jjk-action="blackFlash">Attempt Black Flash</button></div>`;
   } else if (isAttack && degree === 2 && actor?.system?.hasBlackFlashFocus) {
     extra = `<div class="jjk-buttons"><button type="button" data-jjk-action="blackFlashFocus">Black Flash Focus (2 CE, flat DC 10)</button></div>`;
