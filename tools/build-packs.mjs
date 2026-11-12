@@ -353,10 +353,10 @@ shopActor({
 });
 shopActor({
   name: "Bureau Armory",
-  system: { kind: "rare", location: "A steel door in the Bureau annex basement, behind the records office", markup: 100, sellRate: 50, restockDays: 7,
-    search: { dc: 15, skills: "society, diplomacy", minGrade: "grade4", hint: "Japan does not sell guns. The Bureau does, to licensed sorcerers. File a firearms permit with the records office and wait for the call." },
-    description: para("A caged counter, a logbook and a clerk who wants your licence number before he says hello. Firearms, grenades and ballistic armor for licensed sorcerers. Every round you're issued is written down."),
-    gmNotes: para("Open to any PC from Grade 4 who files the permit (Society or Diplomacy, DC 15). Everything is always in stock at list price. Ammunition is free: the Bureau resupplies magazines between jobs.") },
+  ownership: 2,
+  system: { kind: "basic", location: "A steel door in the school basement, behind the records office", markup: 100, sellRate: 50, restockDays: 7,
+    description: para("Japan does not sell guns. The Bureau does, to its own students. A caged counter, a logbook and a clerk who writes down every round you're issued. Firearms, grenades and ballistic armor, at cost."),
+    gmNotes: para("Basic supplies for jujutsu students, always open, everything always in stock at list price. Ammunition is free: the Bureau resupplies magazines between jobs.") },
   stock: docsIn("equipment", armoryItem).map(doc => ({ doc, st: { unlimited: true, qty: 0, max: 0 } }))
 });
 shopActor({
