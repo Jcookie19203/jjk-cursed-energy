@@ -1,3 +1,4 @@
+import { degreeOfSuccess, DEGREE_LABELS } from "../config.mjs";
 import { SYSTEM_ID, GRADES, GRADE_ORDER, SAVES, SKILLS, VALUED_CONDITIONS, TOGGLE_CONDITIONS, DEFAULT_IMG } from "../config.mjs";
 import { rollCheck, rollDamage, promptDamage, rollFlat } from "../dice.mjs";
 
@@ -173,7 +174,68 @@ export class JJKActor extends Actor {
     }
     await this.update(up);
     ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), whisper: game.users.filter(u => u.isGM).map(u => u.id), content: `<div class="jjk-chat">${this.name} takes <strong>${dmg}</strong> damage${note}${drop}.${composureNote}</div>` });
+    // Dying got worse: offer Heroic Recovery (spend every Hero Point to stabilize) to the player and the GM.
+    const heroes = this.system.attributes.heroPoints ?? 0;
+    if (this.isSorcerer && hp === 0 && dmg > 0 && heroes > 0) {
+      const owners = game.users.filter(u => u.isGM || this.testUserPermission(u, "OWNER")).map(u => u.id);
+      ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), whisper: owners, flags: { [SYSTEM_ID]: { actorUuid: this.uuid } },
+        content: `<div class="jjk-chat jjk-hero"><strong>${this.name} is dying ${this.system.conditions.dying}.</strong> Spend all ${heroes} Hero Point${heroes === 1 ? "" : "s"} to cheat death: lose the dying condition and stabilize at 0 HP, without gaining wounded.
+          <div class="jjk-buttons"><button type="button" data-jjk-action="heroicRecovery">★ Spend all Hero Points: stabilize</button></div></div>` });
+    }
     if (hp === 0 && this.isSorcerer && this.system.hasPassenger) await this.adjustPressure(1, "dropped to 0 HP");
+  }
+
+/**
+   * Recovery check (PF2e): at the start of your turn while dying, a flat check against DC 10 + dying.
+   * Crit success −2, success −1, failure +1, crit failure +2. Reaching 0 ends dying (wounded +1, still unconscious at
+   * 0 HP); reaching 4 − doomed kills you, unless you spend every Hero Point first.
+   */
+  async rollRecovery() {
+    const c = this.system.conditions;
+    if (!(c.dying > 0)) return ui.notifications.info(`${this.name} isn't dying.`);
+    const dc = 10 + c.dying;
+    const roll = await new Roll("1d20").evaluate();
+    const degree = degreeOfSuccess(roll.total, roll.total, dc);
+    const deathAt = Math.max(1, 4 - (c.doomed ?? 0));
+    const next = c.dying + [2, 1, -1, -2][degree];
+    const up = {};
+    let result;
+    if (next <= 0) {
+      Object.assign(up, { "system.conditions.dying": 0, "system.conditions.wounded": (c.wounded ?? 0) + 1 });
+      result = `stabilizes: no longer dying, <strong>wounded ${(c.wounded ?? 0) + 1}</strong>, unconscious at 0 HP.`;
+    } else if (next >= deathAt) {
+      up["system.conditions.dying"] = deathAt;
+      result = `<strong>dying ${deathAt}: dies.</strong>`;
+    } else {
+      up["system.conditions.dying"] = next;
+      result = `is now <strong>dying ${next}</strong>.`;
+    }
+    await this.update(up);
+    const heroes = this.system.attributes.heroPoints ?? 0;
+    const offer = next >= deathAt && heroes > 0
+      ? `<div class="jjk-buttons"><button type="button" data-jjk-action="heroicRecovery">★ Spend all ${heroes} Hero Point${heroes === 1 ? "" : "s"}: cheat death</button></div>` : "";
+    await ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), rolls: [roll], flags: { [SYSTEM_ID]: { actorUuid: this.uuid } },
+      content: `<div class="jjk-chat jjk-check"><header><h3>Recovery check</h3></header><div class="jjk-sub">Flat check DC ${dc} (10 + dying ${c.dying})</div>${await roll.render()}
+        <div class="jjk-degree degree-${degree}">${DEGREE_LABELS[degree]}</div><div>${this.name} ${result}</div>${offer}</div>` });
+    if (next >= deathAt && !heroes) await this.toggleStatusEffect("dead", { active: true, overlay: true }).catch(() => null);
+  }
+
+  /** Heroic Recovery (PF2e): spend every Hero Point (at least 1) to lose dying and stabilize at 0 HP. Wounded doesn't go up. */
+  async heroicRecovery() {
+    const heroes = this.system.attributes.heroPoints ?? 0;
+    if (heroes < 1) return ui.notifications.warn(`${this.name} has no Hero Points left.`);
+    if (!(this.system.conditions?.dying > 0)) return ui.notifications.info(`${this.name} isn't dying.`);
+    await this.update({ "system.attributes.heroPoints": 0, "system.conditions.dying": 0 });
+    ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }),
+      content: `<div class="jjk-chat jjk-hero"><strong>Heroic Recovery.</strong> ${this.name} spends ${heroes} Hero Point${heroes === 1 ? "" : "s"} and cheats death: stable at 0 HP, still unconscious.</div>` });
+  }
+
+  /** GM: give one Hero Point (max 3). */
+  async awardHeroPoint() {
+    const hp = this.system.attributes.heroPoints ?? 0;
+    if (hp >= 3) return ui.notifications.info(`${this.name} already has 3 Hero Points.`);
+    await this.update({ "system.attributes.heroPoints": hp + 1 });
+    ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this }), content: `<div class="jjk-chat jjk-hero">★ ${this.name} gains a Hero Point (${hp + 1}/3).</div>` });
   }
 
   async applyHealing(amount) {

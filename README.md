@@ -33,6 +33,7 @@ To install by hand instead, download `jjk-cursed-energy.zip` from the latest rel
 - **Domains (automated):** opening one spends the whole pool (minimum half), draws the barrier on the map and lands the sure hit on every enemy inside, on the slam and at the start of each of the caster's turns. It handles incapacitation (higher Grade: half damage, conditions −1), Simple Domain and Domain Amplification, Domain Clash, damaging the barrier, amplified costs inside, and the collapse (fatigued at 0 CE). Every Domain card and curse ships with its sure-hit filled in. Can be turned off in Settings.
 - **Money & shops:** a yen wallet on every sorcerer, mission pay by Grade, Buy/Sell in shop windows, a restock clock with time-advance buttons, and once-a-day supplier searches. Purchases run through the GM's client, so a GM must be logged in.
 - **Modern weapons:** firearms with magazines, Reload and Auto-Fire, grenades that roll everyone's save in the burst, everyday melee weapons (bats, machetes, chainsaws) and ballistic armor. Guns and grenades are sold at the Bureau Armory, a basic shop open to every student. See *Core Rules VIII*.
+- **Hero Points:** a ★ Reroll button on every sorcerer check (and a prompt when an automatic attack misses), recovery checks offered at the start of a dying PC's turn with dying and wounded applied, a Heroic Recovery button when dying gets worse, and GM buttons to award a point (sheet) and start a new session (Actors sidebar).
 - Drag a card from a sheet to the hotbar to make a macro.
 
 **Compendiums**

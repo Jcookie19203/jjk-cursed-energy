@@ -101,6 +101,9 @@ async function onAction(event, message) {
     case "blackFlash": return actor.attemptBlackFlash();
     case "blackFlashFocus": if (await actor.spendCE(2, { reason: "Black Flash Focus" })) return actor.attemptBlackFlash({ baseDC: 10 }); return;
     case "takeover": return actor.rollTakeover();
+    case "heroReroll": { const { heroReroll } = await import("./dice.mjs"); return heroReroll(actor, message); }
+    case "heroicRecovery": return actor.heroicRecovery();
+    case "recoveryCheck": return actor.rollRecovery();
   }
 }
 
@@ -109,6 +112,54 @@ export function registerChatHooks() {
     for (const el of html.querySelectorAll("[data-jjk-action]")) {
       el.addEventListener("click", ev => { ev.preventDefault(); onAction(ev, message); });
     }
+  });
+}
+
+/** GM: start of a session. Every player character's Hero Points reset to 1 (PF2e). */
+export async function newSessionHeroPoints() {
+  const pcs = game.actors.filter(a => a.type === "sorcerer" && a.hasPlayerOwner);
+  if (!pcs.length) return ui.notifications.warn("No player characters to reset.");
+  const ok = await DialogV2.confirm({ window: { title: "New session" },
+    content: `<p>Set every player character's Hero Points to <strong>1</strong>?</p><p class="hint">${pcs.map(a => `${a.name} (${a.system.attributes.heroPoints})`).join(", ")}</p>`, rejectClose: false });
+  if (!ok) return;
+  for (const a of pcs) await a.update({ "system.attributes.heroPoints": 1 });
+  ChatMessage.create({ content: `<div class="jjk-chat jjk-hero"><strong>★ New session.</strong> Everyone starts with 1 Hero Point: ${pcs.map(a => a.name).join(", ")}.</div>` });
+}
+
+/** The GM's ★ New session button at the top of the Actors sidebar. */
+export function registerHeroPointUI() {
+  Hooks.on("renderActorDirectory", (app, html) => {
+    if (!game.user.isGM) return;
+    const root = html instanceof HTMLElement ? html : html[0];
+    if (!root || root.querySelector(".jjk-new-session")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "jjk-new-session";
+    btn.innerHTML = "★ New session (Hero Points to 1)";
+    btn.addEventListener("click", ev => { ev.preventDefault(); newSessionHeroPoints(); });
+    (root.querySelector(".header-actions") ?? root.querySelector(".directory-header") ?? root).append(btn);
+  });
+}
+
+/**
+ * Recovery checks: when a dying PC's turn starts, its player (or the GM, if the player is away) is asked to roll.
+ * Runs on every client; only the one who should roll sees the prompt. Closing it leaves a button in chat.
+ */
+export function registerDyingHooks() {
+  Hooks.on("updateCombat", async (combat, changed) => {
+    if (!("turn" in changed) && !("round" in changed)) return;
+    const actor = combat.combatant?.actor;
+    if (actor?.type !== "sorcerer" || !(actor.system.conditions?.dying > 0) || !actor.isOwner) return;
+    const playerOn = game.users.some(u => u.active && !u.isGM && actor.testUserPermission(u, "OWNER"));
+    if (game.user.isGM ? playerOn || !game.user.isActiveGM : false) return;
+    const dc = 10 + actor.system.conditions.dying;
+    const roll = await DialogV2.confirm({ window: { title: `${actor.name} is dying` },
+      content: `<p><strong>${actor.name}</strong> is dying ${actor.system.conditions.dying}. Roll a recovery check: flat DC ${dc}.</p><p class="hint">Success lowers dying, failure raises it. At dying ${Math.max(1, 4 - (actor.system.conditions.doomed ?? 0))} you die.</p>`,
+      yes: { label: "Roll recovery check" }, no: { label: "Later" }, rejectClose: false });
+    if (roll) return actor.rollRecovery();
+    ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor }), flags: { [SYSTEM_ID]: { actorUuid: actor.uuid } },
+      whisper: game.users.filter(u => u.isGM || actor.testUserPermission(u, "OWNER")).map(u => u.id),
+      content: `<div class="jjk-chat jjk-hero"><strong>${actor.name}</strong> still needs a recovery check (DC ${dc}).<div class="jjk-buttons"><button type="button" data-jjk-action="recoveryCheck">Roll recovery check</button></div></div>` });
   });
 }
 

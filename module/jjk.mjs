@@ -11,7 +11,7 @@ import { JJKItemSheet } from "./sheets/item-sheet.mjs";
 import { JJKShopSheet } from "./sheets/shop-sheet.mjs";
 import * as shop from "./shop.mjs";
 import * as domain from "./domain.mjs";
-import { registerChatHooks, registerCombatHooks } from "./chat.mjs";
+import { registerChatHooks, registerCombatHooks, registerDyingHooks, registerHeroPointUI } from "./chat.mjs";
 import * as dice from "./dice.mjs";
 import { registerDomainStyle } from "./domain-style.mjs";
 import * as actions from "./actions.mjs";
@@ -90,6 +90,8 @@ Hooks.once("init", () => {
   Hooks.on("createActiveEffect", (effect, options, userId) => syncConditionFromEffect(effect, true, userId));
   Hooks.on("deleteActiveEffect", (effect, options, userId) => syncConditionFromEffect(effect, false, userId));
   registerCombatHooks();
+  registerDyingHooks();
+  registerHeroPointUI();
   shop.registerShops();
   domain.registerDomains();
   registerDomainStyle();

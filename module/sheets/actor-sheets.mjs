@@ -75,6 +75,8 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       openShop: JJKBaseActorSheet.#openShop,
       strike: JJKBaseActorSheet.#strike,
       reload: JJKBaseActorSheet.#reload,
+      awardHero: JJKBaseActorSheet.#awardHero,
+      recoveryCheck: JJKBaseActorSheet.#recoveryCheck,
       autoFire: JJKBaseActorSheet.#autoFire,
       technique: JJKBaseActorSheet.#technique,
       resStep: JJKBaseActorSheet.#resStep,
@@ -125,6 +127,8 @@ class JJKBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const weapon = id && id !== "strike" ? this.document.items.get(id) : null;
     performStrike(this.document, weapon, { map: Number(target.dataset.map) || 0, prompt: event.shiftKey });
   }
+  static #awardHero() { if (game.user.isGM) this.document.awardHeroPoint(); }
+  static #recoveryCheck() { this.document.rollRecovery(); }
   static #reload(event, target) {
     const weapon = this.document.items.get(target.closest("[data-item-id]")?.dataset.itemId);
     if (weapon) reloadWeapon(this.document, weapon);

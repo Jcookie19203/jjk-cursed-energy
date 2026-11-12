@@ -246,3 +246,9 @@
 .jjk .jjk-attack .jjk-ammo { font-family: monospace; padding: 1px 5px; border: 1px solid var(--jjk-line); border-radius: 3px; }
 .jjk .jjk-attack .jjk-ammo.empty { color: #c33; border-color: #c33; font-weight: bold; }
 .jjk .jjk-attack .dmg .map { min-width: 0; padding: 2px 6px; opacity: 0.85; }
+
+/* Hero Points */
+.jjk-chat.jjk-hero { border-left: 3px solid #d4a017; padding-left: 6px; }
+.jjk-chat.jjk-rerolled { opacity: 0.55; }
+.jjk-chat.jjk-rerolled .jjk-degree { text-decoration: line-through; }
+.jjk-new-session { flex: 1 0 100%; margin-top: 4px; }

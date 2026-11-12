@@ -48,9 +48,36 @@ async function promptCheck({ title, isAttack }) {
  * @param {boolean} [o.prompt] Show the modifier dialog (shift-click skips it).
  * @param {object} [o.flags]   Extra message flags.
  */
-export async function rollCheck({ actor, label, modifier, isAttack = false, dc = null, prompt = true, flags = {}, dcLabel = "", map = 0, agile = false }) {
+/** Can this user spend this actor's Hero Point right now (on their own screen)? */
+export function canSpendHeroPoint(actor) {
+  if (actor?.type !== "sorcerer" || !(actor.system.attributes?.heroPoints > 0) || !actor.isOwner) return false;
+  // The GM decides for a PC only when its player isn't logged in; otherwise the player clicks the card's button.
+  if (game.user.isGM) return !game.users.some(u => u.active && !u.isGM && actor.testUserPermission(u, "OWNER"));
+  return true;
+}
+
+export async function spendHeroPoint(actor) {
+  const hp = actor.system.attributes.heroPoints ?? 0;
+  if (hp < 1) { ui.notifications.warn(`${actor.name} has no Hero Points left.`); return false; }
+  await actor.update({ "system.attributes.heroPoints": hp - 1 });
+  return true;
+}
+
+/**
+ * Roll a d20 check and post it to chat.
+ * @param {object} o
+ * @param {Actor} o.actor
+ * @param {string} o.label     Chat title.
+ * @param {number} o.modifier  Total modifier before situational bonuses.
+ * @param {boolean} [o.isAttack]
+ * @param {number|null} [o.dc]
+ * @param {boolean} [o.prompt] Show the modifier dialog (shift-click skips it).
+ * @param {object} [o.flags]   Extra message flags.
+ * @param {boolean} [o.reroll] This is a Hero Point reroll: no dialog, no further reroll.
+ */
+export async function rollCheck({ actor, label, modifier, isAttack = false, dc = null, prompt = true, flags = {}, dcLabel = "", map = 0, agile = false, reroll = false }) {
   let opts = { map, agile, bonus: 0, dc: null };
-  if (prompt) {
+  if (prompt && !reroll) {
     const r = await promptCheck({ title: label, isAttack });
     if (!r) return null;
     opts = r;
@@ -68,10 +95,24 @@ export async function rollCheck({ actor, label, modifier, isAttack = false, dc =
   const degree = target ? degreeOfSuccess(roll.total, natural, target.value) : null;
   const parts = [`${esc(label)} ${signed(total)}`];
   if (mapPenalty) parts.push(`MAP −${mapPenalty}`);
+  if (reroll) parts.push("Hero Point reroll: this result stands");
   let degreeHtml = "";
   if (degree !== null) {
     degreeHtml = `<div class="jjk-degree degree-${degree}">${DEGREE_LABELS[degree]}<span> vs ${esc(target.name)} ${target.value}</span></div>`;
   }
+
+  // A failed check in an automatic action: offer the Hero Point now, so the action carries on with the new result.
+  if (!reroll && flags.auto && degree !== null && degree <= 1 && canSpendHeroPoint(actor)) {
+    const left = actor.system.attributes.heroPoints;
+    const yes = await DialogV2.confirm({ window: { title: "Hero Point" },
+      content: `<p>${esc(label)}: <strong>${DEGREE_LABELS[degree]}</strong> (rolled ${roll.total} vs ${target.value}).</p><p>Spend a Hero Point to reroll? You have ${left}. The new roll stands, even if it's worse.</p>`,
+      rejectClose: false });
+    if (yes && await spendHeroPoint(actor)) {
+      await postCheck(actor, label, parts, roll, degreeHtml + `<div class="jjk-sub">Rerolled with a Hero Point.</div>`, { degree, isAttack, flags, rerolled: true });
+      return rollCheck({ actor, label, modifier: total, isAttack, dc: target.value, prompt: false, flags, dcLabel: target.name, reroll: true });
+    }
+  }
+
   let extra = "";
   if (flags.auto) extra = "";
   else if (isAttack && degree === 3) {
@@ -79,19 +120,36 @@ export async function rollCheck({ actor, label, modifier, isAttack = false, dc =
   } else if (isAttack && degree === 2 && actor?.system?.hasBlackFlashFocus) {
     extra = `<div class="jjk-buttons"><button type="button" data-jjk-action="blackFlashFocus">Black Flash Focus (2 CE, flat DC 10)</button></div>`;
   }
+  // Any sorcerer's check can be rerolled with a Hero Point from the card (the owner clicks it).
+  if (!reroll && actor?.type === "sorcerer" && (actor.system.attributes?.heroPoints ?? 0) > 0) {
+    extra += `<div class="jjk-buttons"><button type="button" data-jjk-action="heroReroll" title="Spend a Hero Point: roll again and keep the new result${flags.auto ? ". Automatic damage and effects aren't redone." : ""}">★ Reroll (Hero Point)</button></div>`;
+  }
+  await postCheck(actor, label, parts, roll, degreeHtml + extra, { degree, isAttack, flags,
+    check: { modifier: total, isAttack, dc: target?.value ?? null, dcLabel: target?.name ?? "", label } });
+  return { roll, degree };
+}
 
-  const content = `<div class="jjk-chat jjk-check"><header><h3>${esc(label)}</h3></header>
+async function postCheck(actor, label, parts, roll, tail, { degree, isAttack, flags, check = null, rerolled = false }) {
+  const content = `<div class="jjk-chat jjk-check${rerolled ? " jjk-rerolled" : ""}"><header><h3>${esc(label)}</h3></header>
     <div class="jjk-sub">${parts.join(" · ")}</div>
     ${await roll.render()}
-    ${degreeHtml}${extra}</div>`;
-
+    ${tail}</div>`;
   await ChatMessage.create({
     speaker: ChatMessage.getSpeaker({ actor }),
     content,
     rolls: [roll],
-    flags: { [SYSTEM_ID]: { actorUuid: actor?.uuid, degree, isAttack, ...flags } }
+    flags: { [SYSTEM_ID]: { actorUuid: actor?.uuid, degree, isAttack, ...flags, check } }
   });
-  return { roll, degree };
+}
+
+/** The ★ Reroll button on a check card. */
+export async function heroReroll(actor, message) {
+  const c = message.flags?.[SYSTEM_ID]?.check;
+  if (!c) return;
+  if (message.getFlag(SYSTEM_ID, "heroUsed")) return ui.notifications.warn("That roll has already been rerolled.");
+  if (!(await spendHeroPoint(actor))) return;
+  if (message.isOwner) await message.setFlag(SYSTEM_ID, "heroUsed", true);
+  return rollCheck({ actor, label: c.label, modifier: c.modifier, isAttack: c.isAttack, dc: c.dc, dcLabel: c.dcLabel, prompt: false, reroll: true });
 }
 
 /** Ask how much CE goes into an output-damage roll, plus crit / Black Flash options. */

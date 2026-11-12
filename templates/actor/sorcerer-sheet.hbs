@@ -62,7 +62,7 @@
           {{#each saves}}<li><a data-action="rollSave" data-key="{{key}}">{{label}}</a><span class="mod">{{mod}}</span><span class="rank">{{rank}}</span></li>{{/each}}
           <li><a data-action="rollPerception">Perception</a><span class="mod">{{perception}}</span></li>
           <li><span>Speed</span><input type="number" name="system.attributes.speed" value="{{system.attributes.speed}}"> ft</li>
-          <li><span>Hero Points</span><input type="number" name="system.attributes.heroPoints" value="{{system.attributes.heroPoints}}" min="0" max="3"></li>
+          <li><span>Hero Points</span><input type="number" name="system.attributes.heroPoints" value="{{system.attributes.heroPoints}}" min="0" max="3">{{#if isGM}} <a data-action="awardHero" title="Give a Hero Point (posts to chat)">★ +1</a>{{/if}}{{#if system.conditions.dying}} <a data-action="recoveryCheck" title="Flat check DC 10 + dying">Recovery check</a>{{/if}}</li>
           <li><span>Armor</span><span>{{#if system.attributes.ac.armorName}}{{system.attributes.ac.armorName}}{{else}}unarmored{{/if}}</span></li>
         </ul>
         <h4>Jujutsu</h4>
