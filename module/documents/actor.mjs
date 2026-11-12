@@ -158,7 +158,8 @@ export class JJKActor extends Actor {
     if (this.isSorcerer && hp === 0 && dmg > 0) {
       // PF2e: drop to 0 → dying 1 + wounded and unconscious; damage while dying → dying +1.
       const c = this.system.conditions;
-      const dying = before > 0 ? 1 + c.wounded : c.dying + 1;
+      // Gaining dying (including a stable PC at 0 HP hit again) starts at 1 + wounded; already dying goes up by 1.
+      const dying = c.dying > 0 ? c.dying + 1 : 1 + c.wounded;
       const deathAt = Math.max(1, 4 - c.doomed);
       Object.assign(up, { "system.conditions.dying": Math.min(dying, deathAt), "system.conditions.unconscious": true });
       drop = dying >= deathAt ? " — <strong>DIES</strong>" : ` — <strong>${before > 0 ? "drops to 0 HP, " : ""}dying ${dying}</strong>`;
