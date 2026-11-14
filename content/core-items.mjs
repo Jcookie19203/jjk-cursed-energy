@@ -35,7 +35,22 @@ export const BACKGROUNDS = [
   ["Shrine Keeper", "Wisdom or Intelligence, one free", "Occultism", "Barrier Lore", "Ward Medicine", "Your family maintains a shrine and its old barriers. You know how seals are meant to hold."],
   ["Martial Artist", "Strength or Dexterity, one free", "Acrobatics", "Dojo Lore", "Cat Fall", "You've trained in a fighting art since childhood. Cursed energy is just one more discipline."],
   ["Detective", "Intelligence or Wisdom, one free", "Society", "Legal Lore", "Streetwise", "You investigated disappearances that never added up, until you learned about curses."],
-  ["Medical Student", "Intelligence or Wisdom, one free", "Medicine", "Anatomy Lore", "Battle Medicine", "You were training to save lives. Reversed Cursed Technique might let you save more."]
+  ["Medical Student", "Intelligence or Wisdom, one free", "Medicine", "Anatomy Lore", "Battle Medicine", "You were training to save lives. Reversed Cursed Technique might let you save more."],
+  // v0.8.0
+  ["Curse User Defector", "Charisma or Dexterity, one free", "Deception", "Curse User Lore", "Lie to Me", "You grew up among curse users and left. The schools took you in, but nobody has forgotten where you came from, least of all your old family."],
+  ["Idol Trainee", "Charisma or Dexterity, one free", "Performance", "Entertainment Lore", "Impressive Performance", "You were weeks from your debut when a curse started following you between gigs. The crowds still recognize you, sometimes at the worst moments."],
+  ["Gambler", "Charisma or Wisdom, one free", "Deception", "Gambling Lore", "Charming Liar", "Pachinko parlours, underground mahjong, a few rooftop fights for money. You read odds and faces, and you know when a bet is worth losing."],
+  ["Tech Kid", "Intelligence or Dexterity, one free", "Crafting", "Computer Lore", "Quick Repair", "You can fix a phone with a paperclip and find anything online. Curses don't show up on cameras, but the people they hurt do."],
+  ["Kendo Captain", "Strength or Dexterity, one free", "Athletics", "Kendo Lore", "Assurance (Athletics)", "You captained your school's kendo club. A sword in your hands feels like home, with or without cursed energy."],
+  ["Biker Gang Member", "Dexterity or Constitution, one free", "Intimidation", "Motorcycle Lore", "Group Coercion", "You rode with a bōsōzoku crew: loud bikes, matching jackets, and a code. Some of your old crew are still out there. Some of them became something worse."],
+  ["Fishing Village Kid", "Constitution or Wisdom, one free", "Survival", "Fishing Lore", "Forager", "You grew up on a cold stretch of coast where the old folks still leave offerings at the tide line, and now you know why."],
+  ["Haunted Child", "Wisdom or Charisma, one free", "Occultism", "Spirit Lore", "Oddity Identification", "Something followed you home when you were six and never left. You learned to live beside it long before anyone told you what it was."],
+  ["Clan Retainer", "Dexterity or Wisdom, one free", "Stealth", "Clan Retainer Lore", "Terrain Stalker", "Your family has served a sorcerer clan for generations as guards, messengers and quiet hands. You were raised to go unnoticed."],
+  ["Off-Duty Cop", "Strength or Wisdom, one free", "Athletics", "Police Lore", "Titan Wrestler", "You were a patrol officer in a ward with too many unexplained deaths. The Bureau recruited you when you started asking the right questions."],
+  ["Kyoto Transfer Student", "Intelligence or Wisdom, one free", "Occultism", "Kyoto School Lore", "Quick Identification", "You trained at the Kyoto school before transferring to Tokyo. They do things the old way there, and you still bow too deeply."],
+  ["Funeral Home Kid", "Wisdom or Constitution, one free", "Religion", "Funeral Lore", "Assurance (Religion)", "Your family runs a funeral home. You've been around grief your whole life, and grief is what curses are made of."],
+  ["Family Restaurant Kid", "Charisma or Constitution, one free", "Diplomacy", "Cooking Lore", "Bargain Hunter", "You grew up behind the counter of your family's ramen shop. You can feed a squad on nothing and talk to anyone who walks in."],
+  ["Bike Courier", "Dexterity or Constitution, one free", "Acrobatics", "City Streets Lore", "Steady Balance", "You know every alley, shortcut and rooftop in the ward from delivering through all of them. A curse in a back street doesn't stay hidden from you for long."]
 ].map(([name, boosts, trainedSkill, lore, feat, text]) => ({ name, boosts, trainedSkill, lore, feat, description: p(text) }));
 
 // Weapons: die size sets the dice in this system (the dice count comes from your Grade's Reinforced Strike).

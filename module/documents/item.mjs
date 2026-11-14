@@ -1,4 +1,4 @@
-import { SYSTEM_ID, GRADES, ACTION_GLYPH, SAVES, DEFAULT_IMG } from "../config.mjs";
+import { SYSTEM_ID, GRADES, ACTION_GLYPH, SAVES, SKILLS, DEFAULT_IMG } from "../config.mjs";
 
 const esc = s => foundry.utils.escapeHTML?.(String(s)) ?? String(s);
 const TextEditorImpl = () => foundry.applications.ux.TextEditor.implementation;
@@ -20,8 +20,47 @@ export class JJKItem extends Item {
       const hp = Math.max(0, (this.parent._source.system.attributes.hp.value ?? a.attributes.hp.value) + delta);
       await this.parent.update({ "system.details.ancestry": this.name, "system.details.ancestryHP": this.system.hp, "system.attributes.speed": this.system.speed, "system.attributes.hp.value": hp });
     } else if (this.type === "background") {
-      await this.parent.update({ "system.details.background": this.name });
+      await this.#grantBackground();
     }
+  }
+
+  /**
+   * A background trains its skill and its Lore (PF2e). A new background replaces the old one, and removing one
+   * takes back only what it granted. Boosts and the skill feat are choices, so they're listed in a note instead.
+   */
+  async #grantBackground() {
+    const actor = this.parent;
+    const old = actor.items.filter(i => i.type === "background" && i.id !== this.id);
+    if (old.length) await actor.deleteEmbeddedDocuments("Item", old.map(i => i.id));
+    const s = actor.system;
+    const wanted = (this.system.trainedSkill ?? "").replace(/\(.*\)/, "").trim().toLowerCase();
+    const skill = Object.entries(SKILLS).find(([k, v]) => k !== "lore" && v.label.toLowerCase() === wanted)?.[0] ?? null;
+    const up = { "system.details.background": this.name };
+    const granted = { skill: null, lore: false, prevLoreName: s.loreName };
+    if (skill && (s.skills[skill]?.rank ?? 0) < 1) { up[`system.skills.${skill}.rank`] = 1; granted.skill = skill; }
+    if (this.system.lore) {
+      up["system.loreName"] = this.system.lore;
+      if ((s.skills.lore?.rank ?? 0) < 1) { up["system.skills.lore.rank"] = 1; granted.lore = true; }
+    }
+    await actor.update(up);
+    await this.setFlag(SYSTEM_ID, "granted", granted);
+    const got = [skill ? SKILLS[skill].label : null, this.system.lore].filter(Boolean).join(" and ");
+    ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor }), whisper: game.users.filter(u => u.isGM || actor.testUserPermission(u, "OWNER")).map(u => u.id),
+      content: `<div class="jjk-chat"><strong>${esc(this.name)}</strong>: ${esc(actor.name)} is now trained in ${esc(got || "nothing new")}.
+        <br>Still to choose: attribute boosts (<em>${esc(this.system.boosts || "—")}</em>) and the skill feat <em>${esc(this.system.feat || "—")}</em>.</div>` });
+  }
+
+  async _onDelete(options, userId) {
+    super._onDelete(options, userId);
+    if (userId !== game.user.id || this.type !== "background" || this.parent?.type !== "sorcerer") return;
+    const g = this.getFlag(SYSTEM_ID, "granted");
+    const actor = this.parent;
+    const up = {};
+    if (actor.system.details.background === this.name) up["system.details.background"] = "";
+    if (g?.skill && actor.system.skills[g.skill]?.rank === 1) up[`system.skills.${g.skill}.rank`] = 0;
+    if (g?.lore && actor.system.skills.lore?.rank === 1) up["system.skills.lore.rank"] = 0;
+    if (g && actor.system.loreName === this.system.lore) up["system.loreName"] = g.prevLoreName || "Lore";
+    if (Object.keys(up).length) actor.update(up);
   }
 
   /** Post this item to chat with roll buttons. */

@@ -34,6 +34,7 @@ To install by hand instead, download `jjk-cursed-energy.zip` from the latest rel
 - **Money & shops:** a yen wallet on every sorcerer, mission pay by Grade, Buy/Sell in shop windows, a restock clock with time-advance buttons, and once-a-day supplier searches. Purchases run through the GM's client, so a GM must be logged in.
 - **Modern weapons:** firearms with magazines, Reload and Auto-Fire, grenades that roll everyone's save in the burst, everyday melee weapons (bats, machetes, chainsaws) and ballistic armor. Guns and grenades are sold at the Bureau Armory, a basic shop open to every student. See *Core Rules VIII*.
 - **Hero Points:** a ★ Reroll button on every sorcerer check (and a prompt when an automatic attack misses), recovery checks offered at the start of a dying PC's turn with dying and wounded applied, a Heroic Recovery button when dying gets worse, and GM buttons to award a point (sheet) and start a new session (Actors sidebar).
+- **Backgrounds:** 26 setting backgrounds (Core Rules IX). Dropping one on a sheet trains its skill and Lore automatically, replaces any previous background, and posts a reminder for the boosts and skill feat.
 - Drag a card from a sheet to the hotbar to make a macro.
 
 **Compendiums**
