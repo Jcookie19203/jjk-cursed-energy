@@ -30,17 +30,27 @@ export class JJKItem extends Item {
    */
   async #grantBackground() {
     const actor = this.parent;
-    const old = actor.items.filter(i => i.type === "background" && i.id !== this.id);
-    if (old.length) await actor.deleteEmbeddedDocuments("Item", old.map(i => i.id));
     const s = actor.system;
+    // Work out the whole change in one update: take back what the old background gave, then grant the new one.
+    const ranks = Object.fromEntries(Object.keys(SKILLS).map(k => [k, s.skills[k]?.rank ?? 0]));
+    let loreName = s.loreName;
+    const up = { "system.details.background": this.name };
+    const old = actor.items.filter(i => i.type === "background" && i.id !== this.id);
+    for (const o of old) {
+      const g = o.getFlag(SYSTEM_ID, "granted");
+      if (!g) continue;
+      if (g.skill && ranks[g.skill] === 1) { ranks[g.skill] = 0; up[`system.skills.${g.skill}.rank`] = 0; }
+      if (g.lore && ranks.lore === 1) { ranks.lore = 0; up["system.skills.lore.rank"] = 0; }
+      if (loreName === o.system.lore) { loreName = g.prevLoreName || "Lore"; up["system.loreName"] = loreName; }
+    }
+    if (old.length) await actor.deleteEmbeddedDocuments("Item", old.map(i => i.id), { jjkReplacing: true });
     const wanted = (this.system.trainedSkill ?? "").replace(/\(.*\)/, "").trim().toLowerCase();
     const skill = Object.entries(SKILLS).find(([k, v]) => k !== "lore" && v.label.toLowerCase() === wanted)?.[0] ?? null;
-    const up = { "system.details.background": this.name };
-    const granted = { skill: null, lore: false, prevLoreName: s.loreName };
-    if (skill && (s.skills[skill]?.rank ?? 0) < 1) { up[`system.skills.${skill}.rank`] = 1; granted.skill = skill; }
+    const granted = { skill: null, lore: false, prevLoreName: loreName };
+    if (skill && ranks[skill] < 1) { up[`system.skills.${skill}.rank`] = 1; granted.skill = skill; }
     if (this.system.lore) {
       up["system.loreName"] = this.system.lore;
-      if ((s.skills.lore?.rank ?? 0) < 1) { up["system.skills.lore.rank"] = 1; granted.lore = true; }
+      if (ranks.lore < 1) { up["system.skills.lore.rank"] = 1; granted.lore = true; }
     }
     await actor.update(up);
     await this.setFlag(SYSTEM_ID, "granted", granted);
@@ -50,9 +60,10 @@ export class JJKItem extends Item {
         <br>Still to choose: attribute boosts (<em>${esc(this.system.boosts || "—")}</em>) and the skill feat <em>${esc(this.system.feat || "—")}</em>.</div>` });
   }
 
-  async _onDelete(options, userId) {
+  _onDelete(options, userId) {
     super._onDelete(options, userId);
-    if (userId !== game.user.id || this.type !== "background" || this.parent?.type !== "sorcerer") return;
+    // A background being replaced was already undone by the one replacing it.
+    if (options?.jjkReplacing || userId !== game.user.id || this.type !== "background" || this.parent?.type !== "sorcerer") return;
     const g = this.getFlag(SYSTEM_ID, "granted");
     const actor = this.parent;
     const up = {};
